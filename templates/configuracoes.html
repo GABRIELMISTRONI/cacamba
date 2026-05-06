@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Configurações{% endblock %}
+{% block topbar_title %}Configurações{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div><h2>Configurações do sistema</h2>
+  <p>Ajuste parâmetros operacionais, motoristas e tipos de caçamba.</p></div>
+</section>
+
+<div class="config-grid">
+  <!-- Empresa e operação -->
+  <div class="card">
+    <h3 class="card-title">⚙️ Parâmetros gerais</h3>
+    <form method="post">
+      <div class="form-grid" style="grid-template-columns:1fr">
+        <div>
+          <label>Nome da empresa</label>
+          <input name="empresa_nome" value="{{ config.get('empresa_nome','') }}" placeholder="Ex.: Caçambas Bauru">
+        </div>
+        <div>
+          <label>Telefone da empresa</label>
+          <input name="empresa_fone" data-mask="phone" value="{{ config.get('empresa_fone','') }}" placeholder="(14) 99999-9999">
+        </div>
+        <div>
+          <label>Prazo padrão de locação (dias)</label>
+          <input name="dias_locacao" type="number" min="1" max="30"
+                 value="{{ config.get('dias_locacao','7') }}"
+                 style="width:100px">
+          <p class="hint" style="margin-top:.3rem">Número de dias corridos antes da retirada.</p>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn">💾 Salvar</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Motoristas -->
+  <div class="card">
+    <h3 class="card-title">🚚 Motoristas</h3>
+    {% if motoristas %}
+      {% for m in motoristas %}
+      <div class="config-item">
+        <span>{{ m }}</span>
+        <form method="post" action="{{ url_for('motorista_excluir', mid=loop.index) }}"
+              onsubmit="return confirm('Remover '+this.dataset.nome+'?')" data-nome="{{ m }}">
+          <button class="btn-icon-danger" title="Remover">✕</button>
+        </form>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="muted hint">Nenhum motorista cadastrado.</p>
+    {% endif %}
+    <form method="post" action="{{ url_for('motorista_novo') }}" style="margin-top:.85rem;display:flex;gap:.5rem">
+      <input name="nome" required placeholder="Nome do motorista" style="flex:1">
+      <button type="submit" class="btn btn-sm">+ Adicionar</button>
+    </form>
+  </div>
+
+  <!-- Frota por tipo -->
+  <div class="card">
+    <h3 class="card-title">📦 Frota por capacidade</h3>
+    {% for c in capacidades %}
+    <div class="config-item">
+      <span><strong>{{ c.capacidade_m3 }} m³</strong></span>
+      <span class="muted">{{ c.n }} caçamba(s)</span>
+    </div>
+    {% endfor %}
+    <p class="hint" style="margin-top:.6rem">Para adicionar ou remover caçambas, acesse <a href="{{ url_for('cacambas') }}">Caçambas</a>.</p>
+  </div>
+
+  <!-- Sobre -->
+  <div class="card">
+    <h3 class="card-title">ℹ️ Sobre o sistema</h3>
+    <div style="font-size:.88rem;line-height:1.8;color:var(--muted)">
+      <p><strong style="color:var(--text)">Caçambas Bauru/SP</strong></p>
+      <p>Sistema de gestão para empresas de locação de caçambas.</p>
+      <p>Fluxo: Pendente → Confirmado → No endereço → Finalizado</p>
+      <p style="margin-top:.6rem">
+        <a href="{{ url_for('reset_banco') }}" class="link-danger" onclick="return confirm('Tem certeza? Apaga TODOS os dados.')">⚠ Resetar banco de dados</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<style>
+.link-danger { color:var(--danger); font-weight:700; font-size:.85rem; text-decoration:none; }
+.link-danger:hover { text-decoration:underline; }
+</style>
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Pedidos{% endblock %}
+{% block topbar_title %}Pedidos{% endblock %}
+{% block topbar_actions %}<a class="btn btn-sm" href="{{ url_for('pedido_novo') }}">+ Nova solicitação</a>{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <h2>Pedidos</h2>
+    <p>Controle operacional completo. Filtre por status, pagamento ou busque pelo cliente.</p>
+  </div>
+  <a class="btn" href="{{ url_for('pedido_novo') }}">+ Nova solicitação</a>
+</section>
+
+<div class="card table-wrap">
+  <div class="filtros-bar">
+    <a href="{{ url_for('pedidos') }}" class="filtro-chip {% if not filtro_status and not filtro_pago %}ativo{% endif %}">Todos ({{ total }})</a>
+    <a href="{{ url_for('pedidos', s='pendente') }}" class="filtro-chip {% if filtro_status=='pendente' %}ativo{% endif %}">⏳ Pendentes</a>
+    <a href="{{ url_for('pedidos', s='confirmado') }}" class="filtro-chip {% if filtro_status=='confirmado' %}ativo{% endif %}">✅ Confirmados</a>
+    <a href="{{ url_for('pedidos', s='no_endereco') }}" class="filtro-chip {% if filtro_status=='no_endereco' %}ativo{% endif %}">🚚 No endereço</a>
+    <a href="{{ url_for('pedidos', s='finalizado') }}" class="filtro-chip {% if filtro_status=='finalizado' %}ativo{% endif %}">🏁 Finalizados</a>
+    <span style="width:1px;background:var(--line);margin:0 .1rem;height:22px;display:inline-block;flex-shrink:0"></span>
+    <a href="{{ url_for('pedidos', p='0') }}" class="filtro-chip {% if filtro_pago=='0' %}ativo{% endif %}">💸 Não pagos</a>
+    <a href="{{ url_for('pedidos', p='1') }}" class="filtro-chip {% if filtro_pago=='1' %}ativo ok{% endif %}">✓ Pagos</a>
+    <form method="get" action="{{ url_for('pedidos') }}" style="margin-left:auto">
+      {% if filtro_status %}<input type="hidden" name="s" value="{{ filtro_status }}">{% endif %}
+      {% if filtro_pago %}<input type="hidden" name="p" value="{{ filtro_pago }}">{% endif %}
+      <input type="search" name="q" value="{{ busca }}" placeholder="Buscar cliente…" class="busca-inline" autocomplete="off">
+    </form>
+  </div>
+
+  {% if pedidos %}
+  <table class="tabela-dados">
+    <thead>
+      <tr><th>#</th><th>Cliente</th><th>Obra</th><th>Tam.</th><th>Período</th><th>Caçamba</th><th>Status</th><th>Pagto.</th><th>Ações</th></tr>
+    </thead>
+    <tbody>
+      {% for p in pedidos %}
+      {% set vencida = p.data_fim_prevista and p.data_fim_prevista < hoje and p.status not in ['finalizado'] %}
+      <tr class="{% if vencida %}linha-vencida{% endif %}">
+        <td class="mono">#{{ p.id }}</td>
+        <td>
+          <a class="link-cliente" href="{{ url_for('cliente_detalhe', cid=p.cliente_id) }}">{{ p.cliente_nome }}</a><br>
+          <small class="muted">{{ p.telefone }}</small>
+        </td>
+        <td class="cel-obra">
+          {% if p.obra_cep and p.obra_cep|length >= 8 %}<span class="mono" style="font-size:.78em">{{ p.obra_cep[0:5] }}-{{ p.obra_cep[5:9] }}</span><br>{% endif %}
+          {{ p.obra_rua or p.endereco_obra or '—' }}
+          {%- if p.obra_quadra %}, Q.{{ p.obra_quadra }}{% endif %}
+          {%- if p.obra_numero %}, nº {{ p.obra_numero }}{% endif %}
+          {% if p.obra_bairro %}<br><small class="muted">{{ p.obra_bairro }}</small>{% endif %}
+        </td>
+        <td><strong>{{ p.capacidade_m3 }} m³</strong></td>
+        <td class="periodo-info">
+          <span>{{ p.data_inicio or 'Aguardando' }}</span>
+          {% if p.data_fim_prevista %}<small class="muted">até {{ p.data_fim_prevista }}</small>{% endif %}
+          {% if vencida %}<span class="badge-vencido">vencida</span>{% endif %}
+        </td>
+        <td>{{ p.cacamba_codigo or '—' }}</td>
+        <td>
+          <span class="status-chip status-{{ p.status }}">{{ p.status.replace('_',' ') }}</span>
+          {% if p.motorista_entrega %}<br><small class="muted">Entregue: {{ p.motorista_entrega }}</small>{% endif %}
+          {% if p.motorista_retirada %}<br><small class="muted">Retirada: {{ p.motorista_retirada }}</small>{% endif %}
+        </td>
+        <td>
+          {% if p.pago %}<span class="badge-pago">✓ Pago</span>
+          {% else %}<span class="badge-nao-pago">Pendente</span>{% endif %}
+        </td>
+        <td>
+          <div class="row-actions">
+            {% if p.status == 'pendente' %}
+            <form class="inline-form" method="post" action="{{ url_for('pedido_confirmar', pid=p.id) }}">
+              <button class="btn btn-ok btn-sm">Confirmar</button>
+            </form>
+            {% elif p.status == 'confirmado' %}
+            <form class="form-entrega" method="post" action="{{ url_for('pedido_entregar', pid=p.id) }}">
+              <select name="cacamba_id" required class="select-cacamba" data-cap="{{ p.capacidade_m3 }}"><option value="">Carregando…</option></select>
+              <select name="motorista_entrega" required>
+                <option value="">Motorista</option>
+                {% for m in motoristas %}<option value="{{ m }}">{{ m }}</option>{% endfor %}
+              </select>
+              <button class="btn btn-alerta btn-sm">🚚 Entregar</button>
+            </form>
+            {% endif %}
+            {% if p.status in ['confirmado','no_endereco'] %}
+            <form class="form-retirada" method="post" action="{{ url_for('pedido_finalizar', pid=p.id) }}">
+              <select name="motorista_retirada" required>
+                <option value="">Motorista retirada</option>
+                {% for m in motoristas %}<option>{{ m }}</option>{% endfor %}
+              </select>
+              <input type="date" name="data_retirada" required max="{{ hoje }}">
+              <button class="btn btn-alerta btn-sm">↩ Finalizar</button>
+            </form>
+            <form class="inline-form" method="post" action="{{ url_for('pedido_cancelar', pid=p.id) }}"
+                  onsubmit="return confirm('Cancelar pedido e liberar a caçamba?')">
+              <button class="btn btn-sec btn-sm">❌ Cancelar</button>
+            </form>
+            {% endif %}
+            {% if not p.pago %}
+            <form class="inline-form" method="post" action="{{ url_for('pedido_pagar', pid=p.id) }}">
+              <input type="hidden" name="origem" value="pedidos">
+              <button class="btn-pagar">✓ Marcar pago</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">Nenhum pedido encontrado com os filtros selecionados.</div>
+  {% endif %}
+</div>
+
+<script>
+document.querySelectorAll('.select-cacamba').forEach(function(sel) {
+  fetch('/api/cacambas-disponiveis?capacidade=' + sel.dataset.cap)
+    .then(r => r.json())
+    .then(function(data) {
+      sel.innerHTML = data.length
+        ? '<option value="">Escolha</option>' + data.map(c => '<option value="'+c.id+'">Nº '+c.codigo+' ('+c.capacidade_m3+'m³)</option>').join('')
+        : '<option value="">Sem disponível</option>';
+    }).catch(function(){ sel.innerHTML = '<option value="">Erro</option>'; });
+});
+</script>
+{% endblock %}

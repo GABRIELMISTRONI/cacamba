@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Editar cliente{% endblock %}
+{% block head_extra %}
+<style>
+  .tipo-toggle { display:flex; gap:.5rem; margin-bottom:1rem; }
+  .tipo-btn { flex:1; padding:.55rem 1rem; border:2px solid var(--line); border-radius:7px; background:var(--surface); cursor:pointer; font-weight:700; font-size:.95rem; transition:.15s; }
+  .tipo-btn.ativo { border-color:var(--brand-2); background:rgba(32,99,155,.08); color:var(--brand-2); }
+  .campo-pf, .campo-pj { display:none; }
+  .campo-pf.visivel, .campo-pj.visivel { display:contents; }
+</style>
+{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <h2>Editar cliente</h2>
+    <p>Atualize os dados do cliente e o endereço principal.</p>
+  </div>
+</section>
+
+<div class="card form-card">
+  <form method="post" id="form-cliente">
+    <input type="hidden" name="tipo_pessoa" id="tipo_pessoa_val" value="{{ cliente.tipo_pessoa }}">
+
+    <div class="tipo-toggle">
+      <button type="button" class="tipo-btn" id="btn-pf" onclick="setTipo('pf')">👤 Pessoa Física</button>
+      <button type="button" class="tipo-btn" id="btn-pj" onclick="setTipo('pj')">🏢 Pessoa Jurídica</button>
+    </div>
+
+    <div class="form-grid">
+      <div class="span-2">
+        <label for="nome">Nome completo *</label>
+        <input id="nome" name="nome" required autocomplete="name" placeholder="Nome do cliente" value="{{ cliente.nome }}">
+      </div>
+
+      <div class="campo-pf visivel">
+        <label for="cpf">CPF *</label>
+        <input id="cpf" name="cpf" data-mask="cpf" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" autocomplete="off" value="{{ cliente.cpf }}">
+      </div>
+
+      <div class="campo-pj">
+        <label for="cnpj">CNPJ *</label>
+        <input id="cnpj" name="cnpj" data-mask="cnpj" placeholder="00.000.000/0000-00" maxlength="18" inputmode="numeric" autocomplete="off" value="{{ cliente.cnpj }}">
+      </div>
+
+      <div class="campo-pj span-2">
+        <label for="razao_social">Razão social</label>
+        <input id="razao_social" name="razao_social" placeholder="Ex.: Construtora XYZ Ltda" value="{{ cliente.razao_social }}">
+      </div>
+
+      <div>
+        <label for="telefone">Telefone *</label>
+        <input id="telefone" name="telefone" data-mask="phone" placeholder="(14) 99999-9999" required maxlength="15" inputmode="numeric" autocomplete="tel" value="{{ cliente.telefone }}">
+      </div>
+      <div>
+        <label for="email">E-mail</label>
+        <input id="email" name="email" type="email" autocomplete="email" value="{{ cliente.email }}">
+      </div>
+    </div>
+
+    <fieldset class="fieldset-obra">
+      <legend>Endereço principal</legend>
+      <div class="form-grid-obra">
+        <div>
+          <label for="cep">CEP</label>
+          <input id="cep" name="cep" data-mask="cep" inputmode="numeric" placeholder="17000-000" maxlength="9" value="{{ cliente.cep }}">
+        </div>
+        <div class="span-2">
+          <label for="rua">Rua / logradouro *</label>
+          <input id="rua" name="rua" required placeholder="Ex.: Rua Antônio Alves" value="{{ cliente.rua }}">
+        </div>
+        <div>
+          <label for="numero">Número</label>
+          <input id="numero" name="numero" placeholder="Ex.: 1200" value="{{ cliente.numero }}">
+        </div>
+        <div class="span-3">
+          <label for="complemento">Complemento</label>
+          <input id="complemento" name="complemento" placeholder="Ex.: Apto 2, fundos" value="{{ cliente.complemento }}">
+        </div>
+      </div>
+      <p class="hint">Edite o endereço principal do cliente. Outros endereços podem ser gerenciados na página de detalhes.</p>
+    </fieldset>
+
+    <div class="form-actions">
+      <button type="submit" class="btn">Salvar alterações</button>
+      <a class="btn btn-sec" href="{{ url_for('cliente_detalhe', cid=cliente.id) }}">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+<script>
+function setTipo(tipo) {
+  document.getElementById('tipo_pessoa_val').value = tipo;
+  document.getElementById('btn-pf').classList.toggle('ativo', tipo === 'pf');
+  document.getElementById('btn-pj').classList.toggle('ativo', tipo === 'pj');
+  document.querySelectorAll('.campo-pf').forEach(el => el.classList.toggle('visivel', tipo === 'pf'));
+  document.querySelectorAll('.campo-pj').forEach(el => el.classList.toggle('visivel', tipo === 'pj'));
+  document.getElementById('cpf').required = tipo === 'pf';
+  document.getElementById('cnpj').required = tipo === 'pj';
+}
+setTipo('{{ cliente.tipo_pessoa }}');
+</script>
+{% endblock %}

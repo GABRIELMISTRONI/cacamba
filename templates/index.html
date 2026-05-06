@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block topbar_title %}Dashboard{% endblock %}
+{% block content %}
+
+<div class="hero-banner">
+  <img src="{{ url_for('static', filename='images/hero-cacambas.png') }}" alt="">
+  <div class="hero-texto">
+    <h2>Caçambas Bauru/SP</h2>
+    <p>Gestão completa de clientes, frota e locações. Veja o resumo do dia abaixo.</p>
+    <div class="hero-acoes">
+      <a class="btn btn-hero" href="{{ url_for('pedido_novo') }}">📋 Nova locação</a>
+      <a class="btn btn-hero-sec" href="{{ url_for('operacoes') }}">🚚 Operações do dia</a>
+      <a class="btn btn-hero-sec" href="{{ url_for('mapa') }}">🗺 Ver mapa</a>
+    </div>
+  </div>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card verde">
+    <div class="stat-num">{{ stats.disponiveis }}</div>
+    <div class="stat-label">Caçambas disponíveis</div>
+  </div>
+  <div class="stat-card laranja">
+    <div class="stat-num">{{ stats.em_uso }}</div>
+    <div class="stat-label">Caçambas em uso</div>
+  </div>
+  <div class="stat-card azul">
+    <div class="stat-num">{{ stats.pedidos_abertos }}</div>
+    <div class="stat-label">Pedidos em aberto</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num">{{ stats.clientes }}</div>
+    <div class="stat-label">Clientes cadastrados</div>
+  </div>
+</div>
+
+<div class="card table-wrap">
+  <div class="card-head-row" style="padding:1rem 1.25rem .5rem">
+    <h3 class="card-title">Pedidos recentes</h3>
+    <a class="btn btn-sec btn-sm" href="{{ url_for('pedidos') }}">Ver todos →</a>
+  </div>
+  {% if ultimos %}
+  <table class="tabela-dados">
+    <thead>
+      <tr><th>#</th><th>Cliente</th><th>Endereço da obra</th><th>Tam.</th><th>Status</th><th>Retirada</th><th>Pagto.</th></tr>
+    </thead>
+    <tbody>
+      {% for p in ultimos %}
+      {% set vencida = p.data_fim_prevista and p.data_fim_prevista < hoje and p.status != 'finalizado' %}
+      <tr class="linha-clicavel {% if vencida %}linha-vencida{% endif %}" onclick="location.href='{{ url_for('pedidos') }}'">
+        <td class="mono">#{{ p.id }}</td>
+        <td><strong>{{ p.cliente_nome }}</strong></td>
+        <td class="cel-obra">
+          {{ p.obra_rua or p.endereco_obra or '—' }}{% if p.obra_numero %}, nº {{ p.obra_numero }}{% endif %}
+          {% if p.obra_bairro %}<br><small class="muted">{{ p.obra_bairro }}</small>{% endif %}
+        </td>
+        <td>{{ p.capacidade_m3 }} m³</td>
+        <td><span class="status-chip status-{{ p.status }}">{{ p.status.replace('_',' ') }}</span></td>
+        <td>
+          {% if p.status in ['cancelado','finalizado'] and p.data_fim_real %}
+            {{ p.data_inicio }} a {{ p.data_fim_real }}
+          {% else %}
+            {{ p.data_fim_prevista or '—' }}
+          {% endif %}
+          {% if vencida %}<br><span class="badge-vencido">vencida</span>{% endif %}
+        </td>
+        <td>{% if p.pago %}<span class="badge-pago">✓ Pago</span>{% else %}<span class="badge-nao-pago">Pendente</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">Nenhuma solicitação ainda. <a href="{{ url_for('pedido_novo') }}">Criar primeiro pedido →</a></div>
+  {% endif %}
+</div>
+{% endblock %}

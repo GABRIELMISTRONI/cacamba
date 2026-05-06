@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Caçambas{% endblock %} — Bauru/SP</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/icone-cacamba.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+
+  <!-- Overlay mobile -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <!-- ── Sidebar ──────────────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <img src="{{ url_for('static', filename='images/icone-cacamba.png') }}" width="36" height="36" alt="Logo">
+      <div>
+        <span class="brand-name">{{ empresa_nome or 'Caçambas' }}</span>
+        <span class="brand-sub">{{ empresa_fone or 'Bauru · SP' }}</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <span class="nav-section">Principal</span>
+      <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
+        <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span>
+      </a>
+
+      <span class="nav-section">Gestão</span>
+      <a href="{{ url_for('clientes') }}" class="nav-item {% if request.endpoint in ['clientes','cliente_novo','cliente_detalhe','cliente_editar'] %}active{% endif %}">
+        <span class="nav-icon">👤</span><span class="nav-label">Clientes</span>
+      </a>
+      <a href="{{ url_for('cacambas') }}" class="nav-item {% if request.endpoint in ['cacambas','cacamba_nova'] %}active{% endif %}">
+        <span class="nav-icon">📦</span><span class="nav-label">Caçambas</span>
+      </a>
+      <a href="{{ url_for('pedidos') }}" class="nav-item {% if request.endpoint in ['pedidos','pedido_novo'] %}active{% endif %}">
+        <span class="nav-icon">📄</span><span class="nav-label">Pedidos</span>
+      </a>
+
+      <span class="nav-section">Operacional</span>
+      <a href="{{ url_for('operacoes') }}" class="nav-item {% if request.endpoint == 'operacoes' %}active{% endif %}">
+        <span class="nav-icon">🚚</span><span class="nav-label">Operações</span>
+      </a>
+      <a href="{{ url_for('financeiro') }}" class="nav-item {% if request.endpoint == 'financeiro' %}active{% endif %}">
+        <span class="nav-icon">💰</span><span class="nav-label">Financeiro</span>
+      </a>
+      <a href="{{ url_for('mapa') }}" class="nav-item {% if request.endpoint == 'mapa' %}active{% endif %}">
+        <span class="nav-icon">🗺</span><span class="nav-label">Mapa</span>
+      </a>
+
+      <span class="nav-section">Sistema</span>
+      <a href="{{ url_for('configuracoes') }}" class="nav-item {% if request.endpoint == 'configuracoes' %}active{% endif %}">
+        <span class="nav-icon">⚙️</span><span class="nav-label">Configurações</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      {% if empresa_fone %}
+      <div class="sidebar-contact">
+        <span class="contact-label">Contato</span>
+        <a class="contact-phone" href="tel:{{ empresa_fone|replace(' ','')|replace('(','')|replace(')','')|replace('-','') }}">{{ empresa_fone }}</a>
+      </div>
+      {% endif %}
+      <a href="{{ url_for('reset_banco') }}" class="nav-item nav-item-danger"
+         onclick="return confirm('Resetar TODOS os dados?')">
+        <span class="nav-icon">🔄</span><span class="nav-label">Reset banco</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- ── Main wrapper ─────────────────────────────────────── -->
+  <div class="layout-main">
+    <!-- Topbar mobile -->
+    <header class="topbar">
+      <button class="topbar-toggle" onclick="toggleSidebar()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <span class="topbar-title">{% block topbar_title %}{% block title2 %}{% endblock %}{% endblock %}</span>
+      <div class="topbar-actions">{% block topbar_actions %}{% endblock %}</div>
+    </header>
+
+    <main class="{% block main_class %}main-shell{% endblock %}">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-wrap">
+            {% for cat, msg in messages %}
+              <div class="flash {{ cat }}">{{ msg }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <script>
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('visible');
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('visible');
+  }
+  </script>
+</body>
+</html>

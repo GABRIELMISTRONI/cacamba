@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Financeiro{% endblock %}
+{% block topbar_title %}Financeiro{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <h2>Financeiro</h2>
+    <p>Acompanhe pagamentos. Marque como pago diretamente nesta tela.</p>
+  </div>
+</section>
+
+<!-- Resumo -->
+<div class="financeiro-resumo">
+  <div class="fin-card verde">
+    <div class="fin-num">{{ totais.pagos }}</div>
+    <div class="fin-label">Pagos</div>
+  </div>
+  <div class="fin-card vermelho">
+    <div class="fin-num">{{ totais.pendentes }}</div>
+    <div class="fin-label">A receber</div>
+  </div>
+  <div class="fin-card azul">
+    <div class="fin-num">{{ totais.total }}</div>
+    <div class="fin-label">Total de locações</div>
+  </div>
+</div>
+
+<!-- Filtros -->
+<div class="card table-wrap">
+  <div class="filtros-bar">
+    <a href="{{ url_for('financeiro') }}" class="filtro-chip {% if not filtro %}ativo{% endif %}">Todos</a>
+    <a href="{{ url_for('financeiro', f='pendente') }}" class="filtro-chip {% if filtro=='pendente' %}ativo{% endif %}">💸 A receber ({{ totais.pendentes }})</a>
+    <a href="{{ url_for('financeiro', f='pago') }}"    class="filtro-chip {% if filtro=='pago' %}ativo ok{% endif %}">✓ Pagos ({{ totais.pagos }})</a>
+    <form method="get" action="{{ url_for('financeiro') }}" style="margin-left:auto">
+      {% if filtro %}<input type="hidden" name="f" value="{{ filtro }}">{% endif %}
+      <input type="search" name="q" value="{{ busca }}" placeholder="Buscar cliente…" class="busca-inline">
+    </form>
+  </div>
+
+  {% if pedidos %}
+  <table class="tabela-dados">
+    <thead>
+      <tr><th>#</th><th>Cliente</th><th>Obra</th><th>Tam.</th><th>Período</th><th>Status</th><th>Pagamento</th></tr>
+    </thead>
+    <tbody>
+      {% for p in pedidos %}
+      {% set venc = p.data_fim_prevista and p.data_fim_prevista < hoje and p.status != 'finalizado' %}
+      <tr class="{% if venc %}linha-vencida{% endif %} {% if not p.pago and p.status != 'pendente' %}linha-a-receber{% endif %}">
+        <td class="mono">#{{ p.id }}</td>
+        <td><a class="link-cliente" href="{{ url_for('cliente_detalhe', cid=p.cliente_id) }}">{{ p.cliente_nome }}</a></td>
+        <td class="cel-obra">
+          {{ p.obra_rua or p.endereco_obra or '—' }}
+          {%- if p.obra_quadra %}, Q.{{ p.obra_quadra }}{% endif %}
+          {%- if p.obra_numero %}, nº {{ p.obra_numero }}{% endif %}
+          {% if p.obra_bairro %}<br><small class="muted">{{ p.obra_bairro }}</small>{% endif %}
+        </td>
+        <td><strong>{{ p.capacidade_m3 }} m³</strong></td>
+        <td>
+          {% if p.status in ['cancelado','finalizado'] and p.data_fim_real %}
+            {{ p.data_inicio }} a {{ p.data_fim_real }}
+          {% elif p.data_inicio %}
+            {{ p.data_inicio }}
+            {% if p.data_fim_prevista %}<br><small class="muted">até {{ p.data_fim_prevista }}</small>{% endif %}
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        </td>
+        <td><span class="status-chip status-{{ p.status }}">{{ p.status.replace('_',' ') }}</span></td>
+        <td>
+          {% if p.pago %}
+            <span class="badge-pago">✓ Pago</span>
+          {% else %}
+            <span class="badge-nao-pago">A receber</span><br>
+            <form class="inline-form" method="post" action="{{ url_for('pedido_pagar', pid=p.id) }}">
+              <input type="hidden" name="origem" value="financeiro">
+              <button class="btn-pagar" style="margin-top:.3rem">✓ Marcar pago</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">Nenhum registro encontrado.</div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Operações{% endblock %}
+{% block topbar_title %}Operações do dia{% endblock %}
+{% block topbar_actions %}<a class="btn btn-sm" href="{{ url_for('pedidos') }}">📄 Todos os pedidos</a>{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <h2>Operações</h2>
+    <p>Entregas pendentes e caçambas em campo. Tudo que precisa de ação hoje.</p>
+  </div>
+</section>
+
+{% if vencidas %}
+<div class="alerta-vencidas card">
+  <strong>⚠ {{ vencidas|length }} caçamba(s) com prazo vencido!</strong>
+  Acione a equipe para retirada urgente.
+</div>
+{% endif %}
+
+<!-- Stats rápidos -->
+<div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
+  <div class="stat-card azul"><div class="stat-num">{{ entregas|length }}</div><div class="stat-label">Aguardando entrega</div></div>
+  <div class="stat-card verde"><div class="stat-num">{{ no_end|length }}</div><div class="stat-label">Caçambas no endereço</div></div>
+  <div class="stat-card laranja"><div class="stat-num">{{ retiradas_hoje|length }}</div><div class="stat-label">Retiradas previstas hoje</div></div>
+  <div class="stat-card" style="border-top-color:var(--danger)"><div class="stat-num" style="color:var(--danger)">{{ vencidas|length }}</div><div class="stat-label">Prazo vencido</div></div>
+</div>
+
+<div class="ops-grid">
+  <!-- Entregas pendentes -->
+  <div class="card">
+    <div class="ops-header">
+      <h3>🚚 Entregas pendentes</h3>
+      <span class="ops-count azul">{{ entregas|length }}</span>
+    </div>
+    {% if entregas %}
+      {% for p in entregas %}
+      <div class="ops-item">
+        <div class="ops-item-title">
+          <a class="link-cliente" href="{{ url_for('cliente_detalhe', cid=p.cliente_id) }}">{{ p.cliente_nome }}</a>
+          — <strong>{{ p.capacidade_m3 }} m³</strong>
+        </div>
+        <div class="ops-item-sub">
+          {{ p.obra_rua }}{% if p.obra_quadra %}, Q.{{ p.obra_quadra }}{% endif %}{% if p.obra_numero %}, nº {{ p.obra_numero }}{% endif %}
+          {% if p.obra_bairro %} — {{ p.obra_bairro }}{% endif %}
+          <br>Pedido #{{ p.id }} · {{ p.criado_em }}
+        </div>
+        <div class="ops-item-actions">
+          <form class="form-entrega" method="post" action="{{ url_for('pedido_entregar', pid=p.id) }}">
+            <select name="cacamba_id" required class="select-cacamba" data-cap="{{ p.capacidade_m3 }}">
+              <option value="">Carregando caçambas…</option>
+            </select>
+            <select name="motorista_entrega" required>
+              <option value="">Motorista</option>
+              {% for m in motoristas %}<option>{{ m }}</option>{% endfor %}
+            </select>
+            <button class="btn btn-ok btn-sm">✓ Registrar entrega</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state" style="padding:1.5rem">Nenhuma entrega pendente. 🎉</div>
+    {% endif %}
+  </div>
+
+  <!-- Caçambas no endereço -->
+  <div class="card">
+    <div class="ops-header">
+      <h3>📦 Caçambas no endereço</h3>
+      <span class="ops-count {% if vencidas %}alerta{% else %}verde{% endif %}">{{ no_end|length }}</span>
+    </div>
+    {% if no_end %}
+      {% for p in no_end %}
+      {% set venc = p.data_fim_prevista and p.data_fim_prevista < hoje %}
+      {% set hoje_ret = p.data_fim_prevista == hoje %}
+      <div class="ops-item {% if venc %}ops-item-vencida{% elif hoje_ret %}ops-item-hoje{% endif %}">
+        <div class="ops-item-title">
+          {% if venc %}<span class="badge-vencido">VENCIDA</span> {% elif hoje_ret %}<span class="badge-hoje">HOJE</span> {% endif %}
+          <a class="link-cliente" href="{{ url_for('cliente_detalhe', cid=p.cliente_id) }}">{{ p.cliente_nome }}</a>
+          — Cç <strong>#{{ p.cacamba_codigo or '?' }}</strong> ({{ p.capacidade_m3 }} m³)
+        </div>
+        <div class="ops-item-sub">
+          {{ p.obra_rua }}{% if p.obra_quadra %}, Q.{{ p.obra_quadra }}{% endif %}{% if p.obra_numero %}, nº {{ p.obra_numero }}{% endif %}
+          {% if p.obra_bairro %} — {{ p.obra_bairro }}{% endif %}
+          <br>Retirada prevista: <strong>{{ p.data_fim_prevista }}</strong>
+          · Motor.: {{ p.motorista_entrega or '—' }}
+        </div>
+        <div class="ops-item-actions">
+          <form class="form-retirada" method="post" action="{{ url_for('pedido_finalizar', pid=p.id) }}">
+            <select name="motorista_retirada" required>
+              <option value="">Motorista retirada</option>
+              {% for m in motoristas %}<option>{{ m }}</option>{% endfor %}
+            </select>
+            <input type="date" name="data_retirada" required max="{{ hoje }}">
+            <button class="btn btn-alerta btn-sm">↩ Registrar retirada</button>
+          </form>
+          <form class="inline-form" method="post" action="{{ url_for('pedido_cancelar', pid=p.id) }}"
+                onsubmit="return confirm('Cancelar pedido e liberar a caçamba?')">
+            <button class="btn btn-sec btn-sm">❌ Cancelar pedido</button>
+          </form>
+          {% if not p.pago %}
+          <form class="inline-form" method="post" action="{{ url_for('pedido_pagar', pid=p.id) }}">
+            <input type="hidden" name="origem" value="operacoes">
+            <button class="btn-pagar">✓ Marcar pago</button>
+          </form>
+          {% else %}<span class="badge-pago">✓ Pago</span>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state" style="padding:1.5rem">Nenhuma caçamba em campo.</div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.select-cacamba').forEach(function(sel){
+  fetch('/api/cacambas-disponiveis?capacidade='+sel.dataset.cap)
+    .then(r=>r.json()).then(function(data){
+      sel.innerHTML = data.length
+        ? '<option value="">Escolha</option>'+data.map(c=>'<option value="'+c.id+'">Nº '+c.codigo+' ('+c.capacidade_m3+'m³)</option>').join('')
+        : '<option value="">Sem disponível ('+sel.dataset.cap+'m³)</option>';
+    }).catch(()=>{ sel.innerHTML='<option value="">Erro</option>'; });
+});
+</script>
+{% endblock %}

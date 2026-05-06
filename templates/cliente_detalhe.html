@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}{{ cliente.nome }}{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <h2>{{ cliente.nome }}</h2>
+    <p>
+      <span class="badge-tipo {% if cliente.tipo_pessoa == 'pj' %}badge-pj{% else %}badge-pf{% endif %}">
+        {{ 'Pessoa Jurídica' if cliente.tipo_pessoa == 'pj' else 'Pessoa Física' }}
+      </span>
+      {% if cliente.razao_social %} · {{ cliente.razao_social }}{% endif %}
+    </p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('pedido_novo', cliente_id=cliente.id) }}">+ Nova locação</a>
+    <a class="btn btn-sec" href="{{ url_for('cliente_editar', cid=cliente.id) }}">✏ Editar</a>
+    <form method="post" action="{{ url_for('cliente_excluir', cid=cliente.id) }}" class="inline-form"
+          onsubmit="return confirm('Excluir este cliente permanentemente?')">
+      <button type="submit" class="btn btn-danger">✕ Excluir</button>
+    </form>
+    <a class="btn btn-sec" href="{{ url_for('clientes') }}">← Lista</a>
+  </div>
+</section>
+
+<!-- Dados -->
+<div class="card">
+  <h3 class="card-title">Dados de contato</h3>
+  <div class="detalhe-grid">
+    <div>
+      <span class="detalhe-label">Telefone</span>
+      <span class="detalhe-val">{{ cliente.telefone }}</span>
+    </div>
+    <div>
+      <span class="detalhe-label">E-mail</span>
+      <span class="detalhe-val">{{ cliente.email or '—' }}</span>
+    </div>
+    <div>
+      <span class="detalhe-label">{% if cliente.tipo_pessoa == 'pj' %}CNPJ{% else %}CPF{% endif %}</span>
+      <span class="detalhe-val mono">
+        {% if cliente.tipo_pessoa == 'pj' and cliente.cnpj and cliente.cnpj|length == 14 %}
+          {{ cliente.cnpj[0:2] }}.{{ cliente.cnpj[2:5] }}.{{ cliente.cnpj[5:8] }}/{{ cliente.cnpj[8:12] }}-{{ cliente.cnpj[12:14] }}
+        {% elif cliente.cpf and cliente.cpf|length == 11 %}
+          {{ cliente.cpf[0:3] }}.{{ cliente.cpf[3:6] }}.{{ cliente.cpf[6:9] }}-{{ cliente.cpf[9:11] }}
+        {% else %}—{% endif %}
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- Endereços -->
+<div class="card">
+  <div class="card-head-row">
+    <h3 class="card-title">Endereços</h3>
+    <button class="btn btn-sm" type="button" onclick="toggleForm('form-end')">+ Adicionar endereço</button>
+  </div>
+
+  <div id="form-end" class="form-inline-box" style="display:none">
+    <form method="post" action="{{ url_for('cliente_endereco_novo', cid=cliente.id) }}">
+      <div class="form-grid-obra">
+        <div>
+          <label>Apelido</label>
+          <input name="apelido" placeholder="Ex.: Residência, Obra Centro">
+        </div>
+        <div>
+          <label>CEP</label>
+          <input name="cep" data-mask="cep" data-cep-autofill inputmode="numeric" placeholder="17000-000" maxlength="9">
+          <small class="field-note" data-cep-status aria-live="polite"></small>
+        </div>
+        <div class="span-3">
+          <label>Rua *</label>
+          <input name="rua" id="obra_rua" required placeholder="Ex.: Rua das Flores">
+        </div>
+        <div>
+          <label>Quadra</label>
+          <input name="quadra" placeholder="Ex.: 12" inputmode="numeric">
+        </div>
+        <div>
+          <label>Número</label>
+          <input name="numero" placeholder="Ex.: 123" inputmode="numeric">
+        </div>
+        <div>
+          <label>Bairro</label>
+          <input name="bairro" id="obra_bairro" placeholder="Ex.: Centro">
+        </div>
+        <div class="span-3">
+          <label>Complemento</label>
+          <input name="complemento" placeholder="Ex.: Fundos, Apto 2">
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:.75rem">
+        <button type="submit" class="btn btn-sm">💾 Salvar endereço</button>
+        <button type="button" class="btn btn-sec btn-sm" onclick="toggleForm('form-end')">Cancelar</button>
+      </div>
+    </form>
+  </div>
+
+  {% if enderecos %}
+  <div class="enderecos-lista">
+    {% for e in enderecos %}
+    <div class="endereco-item">
+      <div class="endereco-info">
+        {% if e.apelido %}<strong class="end-apelido">📍 {{ e.apelido }}</strong>{% endif %}
+        <span>
+          {{ e.rua }}
+          {%- if e.quadra %}, Quadra {{ e.quadra }}{% endif %}
+          {%- if e.numero %}, nº {{ e.numero }}{% endif %}
+          {%- if e.bairro %} — {{ e.bairro }}{% endif %}
+        </span>
+        {% if e.cep and e.cep|length == 8 %}<small class="muted mono">CEP {{ e.cep[0:5] }}-{{ e.cep[5:8] }}</small>{% endif %}
+        {% if e.complemento %}<small class="muted">{{ e.complemento }}</small>{% endif %}
+      </div>
+      <form method="post" action="{{ url_for('cliente_endereco_excluir', cid=cliente.id, eid=e.id) }}"
+            onsubmit="return confirm('Remover este endereço?')">
+        <button type="submit" class="btn-icon-danger" title="Remover">✕</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted" style="margin:.5rem 0 0; font-size:.9rem">Nenhum endereço adicional. Clique em "+ Adicionar endereço" para incluir.</p>
+  {% endif %}
+</div>
+
+<!-- Histórico -->
+<div class="card table-wrap">
+  <div class="card-head-row" style="padding:1rem 1.25rem .5rem">
+    <h3 class="card-title">Histórico de locações</h3>
+    <a class="btn btn-sm" href="{{ url_for('pedido_novo', cliente_id=cliente.id) }}">+ Nova locação</a>
+  </div>
+
+  {% if pedidos %}
+  <table class="tabela-dados">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Endereço da obra</th>
+        <th>Tam.</th>
+        <th>Retirada</th>
+        <th>Caçamba</th>
+        <th>Status</th>
+        <th>Pagamento</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pedidos %}
+      {% set vencida = p.data_fim_prevista and p.data_fim_prevista < hoje and p.status != 'finalizado' %}
+      <tr class="{% if vencida %}linha-vencida{% endif %}">
+        <td class="mono">#{{ p.id }}</td>
+        <td class="cel-obra-pedido">
+          {{ p.obra_rua or p.endereco_obra or '—' }}{% if p.obra_numero %}, nº {{ p.obra_numero }}{% endif %}
+          {% if p.obra_bairro %}<br><small class="muted">{{ p.obra_bairro }}</small>{% endif %}
+          {% if p.observacoes %}<br><small class="muted">Obs: {{ p.observacoes }}</small>{% endif %}
+        </td>
+        <td><strong>{{ p.capacidade_m3 }} m³</strong></td>
+        <td>
+          {% if p.status in ['cancelado','finalizado'] and p.data_fim_real %}
+            {{ p.data_inicio }} a {{ p.data_fim_real }}
+          {% else %}
+            {{ p.data_fim_prevista or 'na entrega' }}
+          {% endif %}
+          {% if p.motorista_entrega %}<br><small class="muted">Entregue por {{ p.motorista_entrega }}</small>{% endif %}
+          {% if p.motorista_retirada %}<br><small class="muted">Retirada por {{ p.motorista_retirada }}</small>{% endif %}
+          {% if vencida %}<br><span class="badge-vencido">vencida</span>{% endif %}
+        </td>
+        <td>{{ p.cacamba_codigo or '—' }}</td>
+        <td><span class="status-chip status-{{ p.status }}">{{ p.status.replace('_',' ') }}</span></td>
+        <td>
+          {% if p.pago %}
+            <span class="badge-pago">✓ Pago</span>
+          {% else %}
+            <span class="badge-nao-pago">Pendente</span>
+            <form class="inline-form" method="post" action="{{ url_for('pedido_pagar', pid=p.id) }}">
+              <input type="hidden" name="origem" value="cliente_{{ cliente.id }}">
+              <button type="submit" class="btn-pagar">Marcar pago</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">Nenhuma locação ainda para este cliente.</div>
+  {% endif %}
+</div>
+
+<script>
+function toggleForm(id) {
+  var el = document.getElementById(id);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+</script>
+{% endblock %}

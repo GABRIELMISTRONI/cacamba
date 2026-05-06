@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Mapa — obras em Bauru{% endblock %}
+{% block main_class %}main-shell main-mapa{% endblock %}
+{% block head_extra %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
+{% endblock %}
+{% block content %}
+<section class="mapa-intro card">
+  <h2 class="mapa-titulo">Mapa das obras</h2>
+  <p class="mapa-texto">
+    Pinos com base no <strong>endereço da obra</strong>, geocodificado via
+    <a href="https://nominatim.openstreetmap.org/" rel="noopener noreferrer">OpenStreetMap Nominatim</a>
+    ao registrar a entrega (CEP, rua, número e bairro opcional da obra).
+  </p>
+  <p class="mapa-meta">
+    <span>Hoje: <strong>{{ hoje_iso }}</strong></span>
+    <span class="mapa-legenda-chip mapa-chip-ok">verde = no prazo</span>
+    <span class="mapa-legenda-chip mapa-chip-venc">vermelho = locação vencida</span>
+  </p>
+</section>
+
+<div id="mapa-bauru" class="mapa-container" role="region" aria-label="Mapa de Bauru"></div>
+
+<div class="card mapa-ajuda">
+  <h3>Dicas</h3>
+  <ul>
+    <li>Se o pin ficar longe, confira CEP, rua e número no pedido ou crie um novo pedido com dados corrigidos.</li>
+    <li>O mapa centra em Bauru-SP; pedidos <strong>no endereço</strong> aparecem aqui depois da entrega.</li>
+  </ul>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+<script>
+(function () {
+  var marcadores = {{ marcadores|tojson }};
+  var centro = [{{ bauru_lat }}, {{ bauru_lon }}];
+
+  function esc(s) {
+    if (s === null || s === undefined) return '';
+    var t = document.createElement('div');
+    t.textContent = String(s);
+    return t.innerHTML;
+  }
+
+  var el = document.getElementById('mapa-bauru');
+  if (!el || typeof L === 'undefined') {
+    if (el) el.innerHTML = '<p class="mapa-erro">Não foi possível carregar o mapa. Verifique a conexão com a internet.</p>';
+    return;
+  }
+
+  var map = L.map('mapa-bauru', { scrollWheelZoom: true }).setView(centro, 12);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(map);
+
+  var bounds = [];
+  marcadores.forEach(function (m) {
+    var lat = Number(m.lat);
+    var lon = Number(m.lon);
+    if (!isFinite(lat) || !isFinite(lon)) return;
+    var cor = m.vencido ? '#b02a37' : '#198754';
+    var marker = L.circleMarker([lat, lon], {
+      radius: 11,
+      color: '#fff',
+      weight: 2,
+      fillColor: cor,
+      fillOpacity: 0.92
+    }).addTo(map);
+
+    var titulo = m.vencido ? 'VENCIDA — retirar' : 'No prazo';
+    var html =
+      '<div class="leaflet-popup-min">' +
+      '<strong>' + esc(titulo) + '</strong><br>' +
+      'Pedido #' + esc(m.id) + ' — ' + esc(m.cacamba) + '<br>' +
+      esc(m.cliente) + '<br>' +
+      '<small>' + esc(m.endereco) + '</small><br>' +
+      'Retirada: <strong>' + esc(m.data_fim) + '</strong><br>' +
+      'Status: ' + esc(m.status) +
+      '</div>';
+    marker.bindPopup(html, { maxWidth: 280 });
+
+    bounds.push([lat, lon]);
+  });
+
+  if (bounds.length === 1) {
+    map.setView(bounds[0], 15);
+  } else if (bounds.length > 1) {
+    map.fitBounds(bounds, { padding: [48, 48], maxZoom: 16 });
+  }
+
+  setTimeout(function () { map.invalidateSize(); }, 200);
+  window.addEventListener('resize', function () { map.invalidateSize(); });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Clientes{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <h2>Clientes</h2>
+    <p>Pesquise por nome, CPF/CNPJ ou endereço. Clique no cliente para ver detalhes e histórico.</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('cliente_novo') }}">Novo cliente</a>
+  </div>
+</section>
+
+<div class="card busca-card">
+  <form method="get" action="{{ url_for('clientes') }}" class="busca-form">
+    <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar por nome, CPF, CNPJ ou endereço…" autocomplete="off" class="busca-input">
+    <button type="submit" class="btn">Buscar</button>
+    {% if busca %}<a class="btn btn-sec" href="{{ url_for('clientes') }}">Limpar</a>{% endif %}
+  </form>
+</div>
+
+<div class="card table-wrap">
+  {% if clientes %}
+  <table class="tabela-dados">
+    <thead>
+      <tr>
+        <th>Nome / Razão Social</th>
+        <th>Tipo</th>
+        <th>CPF / CNPJ</th>
+        <th>Telefone</th>
+        <th>E-mail</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in clientes %}
+      <tr class="linha-clicavel" onclick="location.href='{{ url_for('cliente_detalhe', cid=c.id) }}'">
+        <td><strong>{{ c.nome }}</strong>{% if c.razao_social %}<br><small class="muted">{{ c.razao_social }}</small>{% endif %}</td>
+        <td><span class="badge-tipo {% if c.tipo_pessoa == 'pj' %}badge-pj{% else %}badge-pf{% endif %}">{{ 'PJ' if c.tipo_pessoa == 'pj' else 'PF' }}</span></td>
+        <td class="mono">
+          {% if c.tipo_pessoa == 'pj' and c.cnpj and c.cnpj|length == 14 %}
+            {{ c.cnpj[0:2] }}.{{ c.cnpj[2:5] }}.{{ c.cnpj[5:8] }}/{{ c.cnpj[8:12] }}-{{ c.cnpj[12:14] }}
+          {% elif c.cpf and c.cpf|length == 11 %}
+            {{ c.cpf[0:3] }}.{{ c.cpf[3:6] }}.{{ c.cpf[6:9] }}-{{ c.cpf[9:11] }}
+          {% else %}{{ c.cpf or c.cnpj or '—' }}{% endif %}
+        </td>
+        <td>{{ c.telefone }}</td>
+        <td>{{ c.email or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if busca %}
+  <p class="hint">{{ clientes|length }} resultado(s) para "<strong>{{ busca }}</strong>".</p>
+  {% endif %}
+  {% else %}
+  <div class="empty-state">
+    {% if busca %}Nenhum cliente encontrado para "<strong>{{ busca }}</strong>".{% else %}Nenhum cliente cadastrado.{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

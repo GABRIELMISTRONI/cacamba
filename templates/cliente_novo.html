@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Novo cliente{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <h2>Novo cliente</h2>
+    <p>Selecione o tipo, preencha os dados e salve. Você poderá adicionar mais endereços depois.</p>
+  </div>
+  <a class="btn btn-sec" href="{{ url_for('clientes') }}">← Voltar</a>
+</section>
+
+<div class="card form-card">
+  <form method="post" id="form-cliente">
+    <input type="hidden" name="tipo_pessoa" id="tipo_pessoa_val" value="pf">
+
+    <div class="tipo-toggle">
+      <button type="button" class="tipo-btn ativo" id="btn-pf" onclick="setTipo('pf')">👤 Pessoa Física</button>
+      <button type="button" class="tipo-btn" id="btn-pj" onclick="setTipo('pj')">🏢 Pessoa Jurídica</button>
+    </div>
+
+    <h3 class="secao-titulo">Dados pessoais</h3>
+    <div class="form-grid">
+      <div class="span-2">
+        <label for="nome">Nome completo *</label>
+        <input id="nome" name="nome" required autocomplete="name" placeholder="Nome do cliente">
+      </div>
+
+      <div class="campo-pf visivel">
+        <label for="cpf">CPF *</label>
+        <input id="cpf" name="cpf" data-mask="cpf" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" autocomplete="off">
+      </div>
+
+      <div class="campo-pj">
+        <label for="cnpj">CNPJ *</label>
+        <input id="cnpj" name="cnpj" data-mask="cnpj" placeholder="00.000.000/0000-00" maxlength="18" inputmode="numeric" autocomplete="off">
+      </div>
+
+      <div class="campo-pj">
+        <label for="razao_social">Razão social</label>
+        <input id="razao_social" name="razao_social" placeholder="Ex.: Construtora XYZ Ltda">
+      </div>
+
+      <div>
+        <label for="telefone">Telefone *</label>
+        <input id="telefone" name="telefone" data-mask="phone" placeholder="(14) 99999-9999" required maxlength="15" inputmode="numeric" autocomplete="tel">
+      </div>
+      <div>
+        <label for="email">E-mail</label>
+        <input id="email" name="email" type="email" autocomplete="email" placeholder="email@exemplo.com">
+      </div>
+    </div>
+
+    <h3 class="secao-titulo">Endereço principal</h3>
+    <p class="hint">Informe ao menos a rua. Você pode adicionar mais endereços depois no cadastro.</p>
+    <div class="form-grid-obra">
+      <div>
+        <label for="cep">CEP</label>
+        <input id="cep" name="cep" data-mask="cep" data-cep-autofill inputmode="numeric" placeholder="17000-000" maxlength="9" autocomplete="postal-code">
+        <small class="field-note" data-cep-status aria-live="polite"></small>
+      </div>
+      <div class="span-2">
+        <label for="rua">Rua / logradouro *</label>
+        <input id="rua" name="rua" required placeholder="Ex.: Rua Antônio Alves">
+      </div>
+      <div>
+        <label for="quadra">Quadra</label>
+        <input id="quadra" name="quadra" placeholder="Ex.: 12" inputmode="numeric">
+      </div>
+      <div>
+        <label for="numero">Número</label>
+        <input id="numero" name="numero" placeholder="Ex.: 1200" inputmode="numeric">
+      </div>
+      <div>
+        <label for="bairro">Bairro</label>
+        <input id="bairro" name="bairro" placeholder="Ex.: Centro">
+      </div>
+      <div>
+        <label for="complemento">Complemento</label>
+        <input id="complemento" name="complemento" placeholder="Ex.: Casa dos fundos">
+      </div>
+      <div>
+        <label for="apelido">Apelido do endereço</label>
+        <input id="apelido" name="apelido" placeholder="Ex.: Residência, Loja">
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn">💾 Salvar cliente</button>
+      <a class="btn btn-sec" href="{{ url_for('clientes') }}">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+<script>
+function setTipo(tipo) {
+  document.getElementById('tipo_pessoa_val').value = tipo;
+  document.getElementById('btn-pf').classList.toggle('ativo', tipo === 'pf');
+  document.getElementById('btn-pj').classList.toggle('ativo', tipo === 'pj');
+  document.querySelectorAll('.campo-pf').forEach(function(el){ el.classList.toggle('visivel', tipo === 'pf'); });
+  document.querySelectorAll('.campo-pj').forEach(function(el){ el.classList.toggle('visivel', tipo === 'pj'); });
+  document.getElementById('cpf').required = (tipo === 'pf');
+  document.getElementById('cnpj').required = (tipo === 'pj');
+}
+setTipo('pf');
+</script>
+{% endblock %}
