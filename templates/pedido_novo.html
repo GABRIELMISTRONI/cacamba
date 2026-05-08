@@ -12,65 +12,114 @@
 {% block head_extra %}
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<style>
+  .select2-container--default .select2-selection--single {
+    background-color: var(--surface-color) !important;
+    background-image: none !important;
+    border: 1.5px solid var(--line) !important;
+    border-radius: var(--radius-sm) !important;
+    height: 42px !important;
+    display: flex; align-items: center;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: var(--text-color) !important;
+    line-height: 42px; padding-left: 12px; padding-right: 30px;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__placeholder { color: #c0b8b0 !important; }
+  .select2-container--default .select2-selection--single .select2-selection__arrow { height: 42px; }
+  .select2-container--default.select2-container--focus .select2-selection--single,
+  .select2-container--default.select2-container--open  .select2-selection--single {
+    border-color: var(--brand) !important;
+    box-shadow: 0 0 0 4px rgba(201,93,26,.15) !important;
+  }
+  .select2-dropdown {
+    background-color: var(--surface-color); border: 1.5px solid var(--line);
+    border-radius: var(--radius-sm); z-index: 9999;
+  }
+  .select2-search--dropdown .select2-search__field {
+    background: var(--surface-color); color: var(--text-color);
+    border: 1.5px solid var(--line); border-radius: var(--radius-sm);
+  }
+  .select2-results__option { color: var(--text-color); padding: 8px 12px; }
+  .select2-container--default .select2-results__option--highlighted[aria-selected] { background-color: var(--brand); color: #fff; }
+  .select2-container--default .select2-results__option[aria-selected=true] { background-color: var(--surface-soft); }
+
+  /* Bloco de novo endereço — fora do form-grid, escondido por padrão */
+  #form-novo-endereco {
+    display: none;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem 1.2rem;
+    margin-top: 0;
+  }
+  #form-novo-endereco.visivel { display: grid; }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="card">
   <h2 class="card-title">Criar Novo Pedido</h2>
   <form method="POST" action="{{ url_for('pedido_novo') }}">
+
     <div class="form-grid">
       <div class="form-group span-2">
         <label for="cliente_id">Cliente *</label>
-        <select id="cliente_id" name="cliente_id" class="select2" style="width: 100%" required data-placeholder="Selecione o cliente" data-allow-clear="true">
+        <select id="cliente_id" name="cliente_id" style="width:100%" required>
           <option></option>
         </select>
       </div>
 
       <div class="form-group span-2">
-        <label for="endereco_id">Endereço do cliente</label>
+        <label for="endereco_id">Endereço da Obra</label>
         <select id="endereco_id" name="endereco_id">
           <option value="">— Selecione o cliente primeiro —</option>
-          <option value="novo">+ Adicionar novo endereço</option>
         </select>
       </div>
 
       <div class="form-group">
         <label for="capacidade">Capacidade (m³) *</label>
-        <select id="capacidade" name="capacidade" class="select-cacamba" data-cap="{{ cap }}" required>
-          <option value="3">3 m³ (R$ 300,00)</option>
-          <option value="4">4 m³ (R$ 330,00)</option>
+        <select id="capacidade" name="capacidade" required>
+          <option value="3">3 m³</option>
+          <option value="4">4 m³</option>
         </select>
       </div>
 
       <div class="form-group">
-        <label for="data_fim_prevista">Data Prevista de Retirada *</label>
-        <input type="date" id="data_fim_prevista" name="data_fim_prevista" required>
-      </div>
-
-      <div class="form-group span-2">
-        <label for="cep">CEP da Obra *</label>
-        <input type="text" id="cep" name="cep" data-mask="cep" data-cep-autofill data-cep-status placeholder="XXXXX-XXX" required>
-        <small class="field-note" data-cep-status></small>
-      </div>
-
-      <div class="form-group span-2">
-        <label for="obra_rua">Rua *</label>
-        <input type="text" id="obra_rua" name="obra_rua" required>
-      </div>
-
-      <div class="form-group">
-        <label for="obra_numero">Número *</label>
-        <input type="text" id="obra_numero" name="obra_numero" required>
-      </div>
-
-      <div class="form-group">
-        <label for="obra_bairro">Bairro *</label>
-        <input type="text" id="obra_bairro" name="obra_bairro" required>
+        <label for="data_fim_prevista">Data Prevista de Retirada <small class="muted">(padrão: 7 dias)</small></label>
+        <input type="date" id="data_fim_prevista" name="data_fim_prevista">
       </div>
 
       <div class="form-group span-2">
         <label for="observacoes">Observações</label>
         <textarea id="observacoes" name="observacoes" rows="3"></textarea>
+      </div>
+    </div>
+
+    <!-- Campos de novo endereço — FORA do form-grid, oculto até ser necessário -->
+    <div id="form-novo-endereco">
+      <div class="form-group span-2">
+        <label for="obra_cep">CEP</label>
+        <input type="text" id="obra_cep" name="obra_cep" data-mask="cep" data-cep-autofill placeholder="XXXXX-XXX">
+        <small class="field-note" data-cep-status></small>
+      </div>
+      <div class="form-group span-2">
+        <label for="obra_rua">Rua *</label>
+        <input type="text" id="obra_rua" name="obra_rua">
+      </div>
+      <div class="form-group">
+        <label for="obra_quadra">Quadra</label>
+        <input type="text" id="obra_quadra" name="obra_quadra">
+      </div>
+      <div class="form-group">
+        <label for="obra_numero">Número *</label>
+        <input type="text" id="obra_numero" name="obra_numero">
+      </div>
+      <div class="form-group span-2">
+        <label for="obra_bairro">Bairro</label>
+        <input type="text" id="obra_bairro" name="obra_bairro">
+      </div>
+      <div class="form-group span-2">
+        <label for="endereco_apelido">Apelido (ex: Casa, Obra Centro)</label>
+        <input type="text" id="endereco_apelido" name="endereco_apelido" placeholder="Opcional">
       </div>
     </div>
 
@@ -85,36 +134,101 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-  $(document).ready(function() {
-    // Initialize Select2 with AJAX search
-$('#cliente_id').select2({
-  placeholder: 'Digite o nome, CPF ou CNPJ do cliente',
-  allowClear: true,
-  ajax: {
-    url: '{{ url_for("api_clientes_search") }}',
-    dataType: 'json',
-    delay: 300,
-    data: function(params) {
-      return { q: params.term || '' };
-    },
-    processResults: function(data) {
-      return { results: data };
-    },
-    cache: true
-  },
-  minimumInputLength: 0,
-  templateResult: function(cliente) {
-    if (cliente.loading) return cliente.text;
-    return $('<span>' + cliente.text + '</span>');
-  },
-  templateSelection: function(cliente) {
-    return cliente.text || cliente.id;
-  }
-});
+$(document).ready(function () {
 
-    // Set minimum date for retirada (today)
-    var today = new Date().toISOString().split('T')[0];
-    document.getElementById('data_fim_prevista').min = today;
+  var $clienteSel  = $('#cliente_id');
+  var $enderecoSel = $('#endereco_id');
+  var $formNovo    = $('#form-novo-endereco');
+
+  // ── Inicializar Select2 ─────────────────────────────────────────────
+  $clienteSel.select2({
+    placeholder: 'Digite o nome, CPF ou CNPJ',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $clienteSel.closest('.form-group'),
+    ajax: {
+      url: '{{ url_for("api_clientes_search") }}',
+      dataType: 'json',
+      delay: 250,
+      data: function (p) { return { q: p.term || '' }; },
+      processResults: function (d) { return { results: d }; },
+      cache: true
+    },
+    minimumInputLength: 0,
+    templateResult:    function (c) { return c.loading ? 'Buscando...' : c.text; },
+    templateSelection: function (c) { return c.text || c.id; }
   });
+
+  // ── Ao selecionar cliente: buscar endereços ─────────────────────────
+  $clienteSel.on('select2:select', function (e) {
+    var cid = e.params.data.id;
+    $enderecoSel.html('<option value="">Carregando...</option>').prop('disabled', true);
+    $formNovo.removeClass('visivel');
+    limparNovo();
+
+    fetch('/api/clientes/' + cid + '/enderecos')
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (lista) {
+        $enderecoSel.prop('disabled', false).empty();
+        if (lista.length) {
+          $enderecoSel.append('<option value="">— Escolha o endereço —</option>');
+          lista.forEach(function (a) {
+            var label = (a.apelido ? '[' + a.apelido + '] ' : '') + a.rua;
+            if (a.quadra) label += ', Q.' + a.quadra;
+            if (a.numero) label += ', nº ' + a.numero;
+            if (a.bairro) label += ' — '   + a.bairro;
+            $enderecoSel.append('<option value="' + a.id + '">' + label + '</option>');
+          });
+        }
+        $enderecoSel.append('<option value="novo">+ Novo endereço</option>');
+      })
+      .catch(function () {
+        $enderecoSel.prop('disabled', false).html('<option value="novo">+ Novo endereço</option>');
+      });
+  });
+
+  // ── Ao limpar cliente ───────────────────────────────────────────────
+  $clienteSel.on('select2:clear', function () {
+    $enderecoSel.html('<option value="">— Selecione o cliente primeiro —</option>').prop('disabled', false);
+    $formNovo.removeClass('visivel');
+    limparNovo();
+  });
+
+  // ── Ao mudar endereço: mostrar/esconder form de novo endereço ───────
+  $enderecoSel.on('change', function () {
+    if ($(this).val() === 'novo') {
+      $formNovo.addClass('visivel');
+      limparNovo();
+    } else {
+      $formNovo.removeClass('visivel');
+    }
+  });
+
+  function limparNovo() {
+    ['obra_cep','obra_rua','obra_quadra','obra_numero','obra_bairro','endereco_apelido']
+      .forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
+  }
+
+  // ── Data mínima hoje, padrão +7 dias ───────────────────────────────
+  var today = new Date();
+  var minDate = today.toISOString().split('T')[0];
+  var defDate = new Date(today.getTime() + 7*24*60*60*1000).toISOString().split('T')[0];
+  var dtInput = document.getElementById('data_fim_prevista');
+  dtInput.min   = minDate;
+  dtInput.value = defDate;
+
+  // ── Pré-carregar cliente via ?cliente_id= ───────────────────────────
+  var preId = (document.body.dataset.preClienteId || '').trim();
+  if (preId) {
+    fetch('/api/clientes/' + preId + '/info')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !d.id) return;
+        $clienteSel.append(new Option(d.nome, String(d.id), true, true)).trigger('change');
+        $clienteSel.trigger({ type: 'select2:select', params: { data: { id: String(d.id) } } });
+      }).catch(function () {});
+  }
+
+});
 </script>
 {% endblock %}

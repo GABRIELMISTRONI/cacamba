@@ -507,7 +507,7 @@ def pedido_novo():
 
     if request.method == "POST":
         cid   = request.form.get("cliente_id","").strip()
-        cap   = request.form.get("capacidade_m3","").strip()
+        cap   = request.form.get("capacidade","").strip()
         end_id = request.form.get("endereco_id","").strip()
         obs   = request.form.get("observacoes","").strip()
 
@@ -517,6 +517,10 @@ def pedido_novo():
             return render_template("pedido_novo.html", clientes=clientes_list, pre_cliente_id=pre)
         if not _cap_ok(cap):
             flash("Tamanho inválido.","erro")
+            conn.close()
+            return render_template("pedido_novo.html", clientes=clientes_list, pre_cliente_id=pre)
+        if not end_id:
+            flash("Selecione ou cadastre o endereço da obra.","erro")
             conn.close()
             return render_template("pedido_novo.html", clientes=clientes_list, pre_cliente_id=pre)
 
@@ -558,14 +562,19 @@ def pedido_novo():
 
         linha = _fmt_endereco(obra_cep, obra_rua, obra_quadra, obra_numero, obra_bairro)
         agora = datetime.now().strftime("%Y-%m-%d %H:%M")
+        # Data prevista: vinda do form (editável), senão 7 dias a partir de hoje
+        data_fim = request.form.get("data_fim_prevista","").strip()
+        if not data_fim:
+            from datetime import timedelta
+            data_fim = (date.today() + timedelta(days=7)).isoformat()
         conn.execute(
             """INSERT INTO pedidos
                (cliente_id,cacamba_id,capacidade_m3,endereco_obra,
                 obra_cep,obra_rua,obra_quadra,obra_numero,obra_bairro,
                 data_inicio,data_fim_prevista,status,pago,criado_em,observacoes)
-               VALUES (?,NULL,?,?,?,?,?,?,'pendente',0,?,?)""",
+               VALUES (?,NULL,?,?,?,?,?,?,?,?,?,'pendente',0,?,?)""",
             (int(cid),int(cap),linha,obra_cep,obra_rua,obra_quadra,
-             obra_numero,obra_bairro,agora,obs),
+             obra_numero,obra_bairro,agora,data_fim,agora,obs),
         )
         conn.commit()
         conn.close()
@@ -938,6 +947,16 @@ def api_cliente_enderecos(cid):
     ).fetchall()
     conn.close()
     return Response(json.dumps([dict(r) for r in rows]), mimetype="application/json")
+
+
+@app.route("/api/clientes/<int:cid>/info")
+def api_cliente_info(cid):
+    conn = get_conn()
+    row = conn.execute("SELECT id, nome FROM clientes WHERE id=?", (cid,)).fetchone()
+    conn.close()
+    if not row:
+        return Response(json.dumps({}), status=404, mimetype="application/json")
+    return Response(json.dumps({"id": row["id"], "nome": row["nome"]}), mimetype="application/json")
 
 
 @app.route("/api/clientes/search")
