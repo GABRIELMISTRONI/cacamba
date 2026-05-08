@@ -221,8 +221,17 @@
   var formNovoDiv = document.getElementById('form-novo-endereco');
   var addresses = [];
 
+  function fillObraAddress(addr) {
+    ['obra_cep','obra_rua','obra_quadra','obra_numero','obra_bairro'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.value = addr[id.replace('obra_','')] || '';
+    });
+  }
+
   function showPreview(addr) {
     if (!previewDiv) return;
+    fillObraAddress(addr);
     previewDiv.innerHTML = 
       '<div class="end-preview-box">' +
         (addr.apelido ? '<strong class="end-apelido">📍 ' + esc(addr.apelido) + '</strong>' : '') +
@@ -235,7 +244,7 @@
         (addr.complemento ? '<small class="muted">' + esc(addr.complemento) + '</small>' : '') +
       '</div>';
     previewDiv.style.display = 'block';
-    if (formNovoDiv) formNovoDiv.style.display = 'none';
+    if (formNovoDiv) formNovoDiv.style.display = 'block';
   }
 
   function showFormNovo() {
@@ -273,7 +282,7 @@
     enderecoSelect.innerHTML += '<option value="novo">+ Adicionar novo endereço</option>';
     
     if (previewDiv) previewDiv.style.display = 'none';
-    if (formNovoDiv) formNovoDiv.style.display = 'none';
+    if (formNovoDiv) formNovoDiv.style.display = 'block';
   }
 
   function esc(s) {
@@ -353,7 +362,7 @@
   });
 
   // Initialize on page load
-  var initClient = '{{ pre_cliente_id or "" }}';
+  var initClient = document.body.dataset.preClienteId || '';
   if (initClient && clienteSelect) {
     showLoading();
     fetch('/api/clientes/' + initClient + '/enderecos')

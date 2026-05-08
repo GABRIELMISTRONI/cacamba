@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   {% block head_extra %}{% endblock %}
 </head>
-<body class="{% block body_class %}{% endblock %}">
+<body class="{% block body_class %}{% endblock %}" data-pre-cliente-id="{{ pre_cliente_id or '' }}">
 
   <!-- Overlay mobile -->
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
