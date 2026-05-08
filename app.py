@@ -14,6 +14,7 @@ from database import CAPACIDADES_M3, get_conn, init_db, seed_if_empty
 from geocode import geocodificar_obra, geocodificar_obra_bauru
 
 app = Flask(__name__)
+
 app.secret_key = "cacambas-bauru-2024-prod"
 
 BAURU_LAT = -22.3145
@@ -25,7 +26,7 @@ init_db()
 seed_if_empty()
 
 
-# ╔══════════════════════════════════════════════════════════╗
+# ╔════════════════════════════════════════════════════════╗
 # ║  HELPERS                                                 ║
 # ╚══════════════════════════════════════════════════════════╝
 
@@ -64,7 +65,7 @@ def _fmt_endereco(cep, rua, quadra, numero, bairro):
     return linha or "—"
 
 def _geocode_ped(ped):
-    keys = ped.keys()
+    keys = list(ped.keys())
     bairro = (ped["obra_bairro"] or "").strip() if "obra_bairro" in keys else ""
     quadra = (ped["obra_quadra"] or "").strip() if "obra_quadra" in keys else ""
     coords = geocodificar_obra(
@@ -76,7 +77,6 @@ def _geocode_ped(ped):
     txt = (ped["endereco_obra"] or "").strip()
     if txt:
         return geocodificar_obra_bauru(txt)
-    # fallback: dispersa pontos em volta de Bauru para visualização
     pid = ped["id"]
     return (BAURU_LAT + ((pid % 9) - 4) * 0.003,
             BAURU_LON + ((pid % 11) - 5) * 0.003)
@@ -139,7 +139,7 @@ def inject_global_context():
     }
 
 
-# ╔══════════════════════════════════════════════════════════╗
+# ╔════════════════════════════════════════════════════════╗
 # ║  DASHBOARD                                               ║
 # ╚══════════════════════════════════════════════════════════╝
 
@@ -160,7 +160,7 @@ def index():
         hoje=date.today().isoformat())
 
 
-# ╔══════════════════════════════════════════════════════════╗
+# ╔════════════════════════════════════════════════════════╗
 # ║  CLIENTES                                                ║
 # ╚══════════════════════════════════════════════════════════╝
 
@@ -176,18 +176,18 @@ def clientes():
                WHERE nome LIKE ? OR cpf LIKE ? OR cnpj LIKE ? OR razao_social LIKE ?
                   OR rua LIKE ? OR telefone LIKE ?
                ORDER BY nome""",
-            (like,)*6,
+            (like, like, like, like, like, like),
         ).fetchall()
-        # também enderecos_cliente
         ids_end = [r[0] for r in conn.execute(
             "SELECT DISTINCT cliente_id FROM enderecos_cliente WHERE rua LIKE ? OR bairro LIKE ?",
             (like, like),
         ).fetchall()]
         existentes = {r["id"] for r in rows}
         if ids_end:
+            placeholders = ','.join('?' for _ in ids_end)
             extras = conn.execute(
                 f"SELECT id,tipo_pessoa,nome,cpf,cnpj,razao_social,telefone,email,rua,numero"
-                f" FROM clientes WHERE id IN ({','.join('?'*len(ids_end))}) ORDER BY nome",
+                f" FROM clientes WHERE id IN ({placeholders}) ORDER BY nome",
                 ids_end,
             ).fetchall()
             rows = list(rows) + [r for r in extras if r["id"] not in existentes]
@@ -196,7 +196,6 @@ def clientes():
             "SELECT id,tipo_pessoa,nome,cpf,cnpj,razao_social,telefone,email,rua,numero"
             " FROM clientes ORDER BY nome"
         ).fetchall()
-    # Contagem de pedidos por cliente
     counts = {r[0]: r[1] for r in conn.execute(
         "SELECT cliente_id, COUNT(*) FROM pedidos GROUP BY cliente_id"
     ).fetchall()}
@@ -252,7 +251,8 @@ def cliente_novo():
                VALUES (?,?,?,?,?,?,?,?)""",
             (nid,cep,rua,quadra,numero,bairro,comp,apel or "Principal"),
         )
-        conn.commit(); conn.close()
+        conn.commit()
+        conn.close()
         flash("Cliente cadastrado com sucesso.", "ok")
         return redirect(url_for("cliente_detalhe", cid=nid))
     return render_template("cliente_novo.html")
@@ -266,7 +266,8 @@ def cliente_detalhe(cid):
         " FROM clientes WHERE id=?", (cid,)
     ).fetchone()
     if not c:
-        conn.close(); flash("Cliente não encontrado.","erro")
+        conn.close()
+        flash("Cliente não encontrado.","erro")
         return redirect(url_for("clientes"))
     enderecos = conn.execute(
         "SELECT id,apelido,cep,rua,quadra,numero,bairro,complemento"
@@ -295,7 +296,8 @@ def cliente_editar(cid):
         " FROM clientes WHERE id=?", (cid,)
     ).fetchone()
     if not c:
-        conn.close(); flash("Cliente não encontrado.","erro")
+        conn.close()
+        flash("Cliente não encontrado.","erro")
         return redirect(url_for("clientes"))
     if request.method == "POST":
         tipo   = request.form.get("tipo_pessoa","pf")
@@ -327,7 +329,8 @@ def cliente_editar(cid):
              _digits(cnpj) if tipo=="pj" else "",
              razao,tel,email,cep,rua,numero,comp,cid),
         )
-        conn.commit(); conn.close()
+        conn.commit()
+        conn.close()
         flash("Dados atualizados.","ok")
         return redirect(url_for("cliente_detalhe", cid=cid))
     conn.close()
@@ -339,11 +342,13 @@ def cliente_excluir(cid):
     conn = get_conn()
     n = conn.execute("SELECT COUNT(*) FROM pedidos WHERE cliente_id=?",(cid,)).fetchone()[0]
     if n:
-        conn.close(); flash("Não é possível excluir cliente com locações registradas.","erro")
+        conn.close()
+        flash("Não é possível excluir cliente com locações registradas.","erro")
         return redirect(url_for("cliente_detalhe", cid=cid))
     conn.execute("DELETE FROM enderecos_cliente WHERE cliente_id=?",(cid,))
     conn.execute("DELETE FROM clientes WHERE id=?",(cid,))
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
     flash("Cliente excluído.","ok")
     return redirect(url_for("clientes"))
 
@@ -366,7 +371,8 @@ def cliente_endereco_novo(cid):
         " VALUES (?,?,?,?,?,?,?,?)",
         (cid,cep,rua,quadra,numero,bairro,comp,apel),
     )
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
     flash("Endereço adicionado.","ok")
     return redirect(url_for("cliente_detalhe", cid=cid))
 
@@ -375,12 +381,13 @@ def cliente_endereco_novo(cid):
 def cliente_endereco_excluir(cid, eid):
     conn = get_conn()
     conn.execute("DELETE FROM enderecos_cliente WHERE id=? AND cliente_id=?",(eid,cid))
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
     flash("Endereço removido.","ok")
     return redirect(url_for("cliente_detalhe", cid=cid))
 
 
-# ╔══════════════════════════════════════════════════════════╗
+# ╔════════════════════════════════════════════════════════╗
 # ║  CAÇAMBAS                                                ║
 # ╚══════════════════════════════════════════════════════════╝
 
@@ -391,7 +398,8 @@ def cacambas():
     q = "SELECT id,codigo,capacidade_m3,status FROM cacambas"
     params = ()
     if f in ("disponivel","em_uso","manutencao"):
-        q += " WHERE status=?"; params = (f,)
+        q += " WHERE status=?"
+        params = (f,)
     q += " ORDER BY CASE WHEN codigo GLOB '[0-9]*' THEN CAST(codigo AS INTEGER) ELSE 999999 END,codigo"
     rows = conn.execute(q, params).fetchall()
     tots = {r["status"]: r["n"] for r in conn.execute(
@@ -409,12 +417,17 @@ def cacamba_nova():
     if request.method == "POST":
         cod = request.form.get("codigo","").strip()
         cap = request.form.get("capacidade_m3","").strip()
-        if not cod: flash("Informe o número da caçamba.","erro"); return render_template("cacamba_nova.html")
-        if not _cap_ok(cap): flash("Capacidade inválida (3 ou 4 m³).","erro"); return render_template("cacamba_nova.html")
+        if not cod:
+            flash("Informe o número da caçamba.","erro")
+            return render_template("cacamba_nova.html")
+        if not _cap_ok(cap):
+            flash("Capacidade inválida (3 ou 4 m³).","erro")
+            return render_template("cacamba_nova.html")
         try:
             conn = get_conn()
             conn.execute("INSERT INTO cacambas (codigo,capacidade_m3,status) VALUES (?,?,'disponivel')",(cod,int(cap)))
-            conn.commit(); conn.close()
+            conn.commit()
+            conn.close()
             flash(f"Caçamba nº {cod} cadastrada.","ok")
             return redirect(url_for("cacambas"))
         except sqlite3.IntegrityError:
@@ -426,7 +439,8 @@ def cacamba_nova():
 def cacamba_manutencao(cid):
     conn = get_conn()
     conn.execute("UPDATE cacambas SET status='manutencao' WHERE id=? AND status='disponivel'",(cid,))
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
     flash("Caçamba marcada para manutenção.","ok")
     return redirect(url_for("cacambas"))
 
@@ -435,12 +449,13 @@ def cacamba_manutencao(cid):
 def cacamba_disponivel(cid):
     conn = get_conn()
     conn.execute("UPDATE cacambas SET status='disponivel' WHERE id=?",(cid,))
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
     flash("Caçamba liberada.","ok")
     return redirect(url_for("cacambas"))
 
 
-# ╔══════════════════════════════════════════════════════════╗
+# ╔════════════════════════════════════════════════════════╗
 # ║  PEDIDOS                                                 ║
 # ╚══════════════════════════════════════════════════════════╝
 
@@ -458,15 +473,17 @@ _PEDIDO_SELECT = """
 
 @app.route("/pedidos")
 def pedidos():
-    s   = request.args.get("s","")   # filtro status
-    pg  = request.args.get("p","")   # filtro pago (0/1)
-    q   = request.args.get("q","").strip()  # busca cliente
+    s   = request.args.get("s","")
+    pg  = request.args.get("p","")
+    q   = request.args.get("q","").strip()
     conn = get_conn()
     where, params = [], []
     if s in ("pendente","confirmado","no_endereco","finalizado"):
-        where.append("p.status=?"); params.append(s)
+        where.append("p.status=?")
+        params.append(s)
     if pg in ("0","1"):
-        where.append("p.pago=?"); params.append(int(pg))
+        where.append("p.pago=?")
+        params.append(int(pg))
     if q:
         pedido_id = int(q) if q.isdigit() else -1
         where.append("(c.nome LIKE ? OR p.id = ? OR p.endereco_obra LIKE ? OR p.obra_rua LIKE ?)")
@@ -486,7 +503,7 @@ def pedidos():
 def pedido_novo():
     pre = request.args.get("cliente_id","")
     conn = get_conn()
-    clientes_list = conn.execute("SELECT id,nome FROM clientes ORDER BY nome").fetchall()
+    clientes_list = conn.execute("SELECT id FROM clientes").fetchall()
 
     if request.method == "POST":
         cid   = request.form.get("cliente_id","").strip()
@@ -503,7 +520,6 @@ def pedido_novo():
             conn.close()
             return render_template("pedido_novo.html", clientes=clientes_list, pre_cliente_id=pre)
 
-        # Resolve endereço
         if end_id and end_id != "novo":
             end = conn.execute(
                 "SELECT * FROM enderecos_cliente WHERE id=? AND cliente_id=?",
@@ -530,7 +546,6 @@ def pedido_novo():
                 flash("Preencha rua e número do novo endereço.","erro")
                 conn.close()
                 return render_template("pedido_novo.html", clientes=clientes_list, pre_cliente_id=pre)
-            # Salva o novo endereço
             conn.execute(
                 "INSERT INTO enderecos_cliente (cliente_id,cep,rua,quadra,numero,bairro,complemento,apelido)"
                 " VALUES (?,?,?,?,?,?,?,?)",
@@ -548,11 +563,12 @@ def pedido_novo():
                (cliente_id,cacamba_id,capacidade_m3,endereco_obra,
                 obra_cep,obra_rua,obra_quadra,obra_numero,obra_bairro,
                 data_inicio,data_fim_prevista,status,pago,criado_em,observacoes)
-               VALUES (?,NULL,?,?,?,?,?,?,?,?,?,'pendente',0,?,?)""",
+               VALUES (?,NULL,?,?,?,?,?,?,'pendente',0,?,?)""",
             (int(cid),int(cap),linha,obra_cep,obra_rua,obra_quadra,
-             obra_numero,obra_bairro,"","",agora,obs),
+             obra_numero,obra_bairro,agora,obs),
         )
-        conn.commit(); conn.close()
+        conn.commit()
+        conn.close()
         flash("Solicitação registrada.","ok")
         return redirect(url_for("cliente_detalhe", cid=int(cid)) if pre else url_for("pedidos"))
 
@@ -565,10 +581,12 @@ def pedido_confirmar(pid):
     conn = get_conn()
     p = conn.execute("SELECT id,status FROM pedidos WHERE id=?",(pid,)).fetchone()
     if not p or p["status"] != "pendente":
-        conn.close(); flash("Pedido não encontrado ou já processado.","erro")
+        conn.close()
+        flash("Pedido não encontrado ou já processado.","erro")
         return redirect(url_for("pedidos"))
     conn.execute("UPDATE pedidos SET status='confirmado' WHERE id=?",(pid,))
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
     flash("Pedido confirmado.","ok")
     return redirect(request.referrer or url_for("pedidos"))
 
@@ -584,23 +602,32 @@ def pedido_entregar(pid):
     ).fetchone()
 
     if not ped or ped["status"] != "confirmado":
-        conn.close(); flash("Só é possível entregar pedidos confirmados.","erro")
+        conn.close()
+        flash("Só é possível entregar pedidos confirmados.","erro")
         return redirect(url_for("pedidos"))
     if not cacamba_id:
-        conn.close(); flash("Selecione a caçamba.","erro")
+        conn.close()
+        flash("Selecione a caçamba.","erro")
         return redirect(url_for("pedidos"))
     motoristas = _get_motoristas()
     if motorista not in motoristas:
-        conn.close(); flash("Selecione o motorista.","erro")
+        conn.close()
+        flash("Selecione o motorista.","erro")
         return redirect(url_for("pedidos"))
 
     cab = conn.execute("SELECT id,capacidade_m3,status FROM cacambas WHERE id=?",(int(cacamba_id),)).fetchone()
     if not cab:
-        conn.close(); flash("Caçamba não encontrada.","erro"); return redirect(url_for("pedidos"))
+        conn.close()
+        flash("Caçamba não encontrada.","erro")
+        return redirect(url_for("pedidos"))
     if cab["capacidade_m3"] != ped["capacidade_m3"]:
-        conn.close(); flash("Capacidade da caçamba não corresponde ao pedido.","erro"); return redirect(url_for("pedidos"))
+        conn.close()
+        flash("Capacidade da caçamba não corresponde ao pedido.","erro")
+        return redirect(url_for("pedidos"))
     if cab["status"] != "disponivel":
-        conn.close(); flash("Caçamba não está disponível.","erro"); return redirect(url_for("pedidos"))
+        conn.close()
+        flash("Caçamba não está disponível.","erro")
+        return redirect(url_for("pedidos"))
 
     lat, lon = _geocode_ped(ped)
     inicio = date.today()
@@ -614,7 +641,8 @@ def pedido_entregar(pid):
            data_inicio=?,data_fim_prevista=?,latitude=?,longitude=? WHERE id=?""",
         (int(cacamba_id),motorista,inicio.isoformat(),fim.isoformat(),lat,lon,pid),
     )
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
     flash(f"Entrega registrada por {motorista}. Retirada prevista: {fim.strftime('%d/%m/%Y')}.","ok")
     return redirect(request.referrer or url_for("pedidos"))
 
@@ -626,22 +654,33 @@ def pedido_finalizar(pid):
     conn = get_conn()
     p = conn.execute("SELECT id,status,cacamba_id FROM pedidos WHERE id=?",(pid,)).fetchone()
     if not p or p["status"] not in ("confirmado","no_endereco"):
-        conn.close(); flash("Não é possível finalizar este pedido.","erro"); return redirect(url_for("pedidos"))
+        conn.close()
+        flash("Não é possível finalizar este pedido.","erro")
+        return redirect(url_for("pedidos"))
     if not motorista_retirada or not data_retirada:
-        conn.close(); flash("Selecione o motorista e a data de retirada.","erro"); return redirect(url_for("pedidos"))
+        conn.close()
+        flash("Selecione o motorista e a data de retirada.","erro")
+        return redirect(url_for("pedidos"))
     motoristas = _get_motoristas()
     if motorista_retirada not in motoristas:
-        conn.close(); flash("Selecione um motorista válido.","erro"); return redirect(url_for("pedidos"))
+        conn.close()
+        flash("Selecione um motorista válido.","erro")
+        return redirect(url_for("pedidos"))
     try:
         data_ret = datetime.strptime(data_retirada, "%Y-%m-%d").date()
         if data_ret > date.today():
-            conn.close(); flash("Data de retirada não pode ser futura.","erro"); return redirect(url_for("pedidos"))
+            conn.close()
+            flash("Data de retirada não pode ser futura.","erro")
+            return redirect(url_for("pedidos"))
     except:
-        conn.close(); flash("Data inválida.","erro"); return redirect(url_for("pedidos"))
+        conn.close()
+        flash("Data inválida.","erro")
+        return redirect(url_for("pedidos"))
     if p["cacamba_id"]:
         conn.execute("UPDATE cacambas SET status='disponivel' WHERE id=?",(p["cacamba_id"],))
-    conn.execute("UPDATE pedidos SET status='finalizado', motorista_retirada=?, data_fim_real=? WHERE id=?",(motorista_retirada, data_retirada, pid,))
-    conn.commit(); conn.close()
+    conn.execute("UPDATE pedidos SET status='finalizado', motorista_retirada=?, data_fim_real=? WHERE id=?",(motorista_retirada, data_retirada, pid))
+    conn.commit()
+    conn.close()
     flash("Retirada registrada. Caçamba liberada.","ok")
     return redirect(request.referrer or url_for("pedidos"))
 
@@ -651,12 +690,15 @@ def pedido_cancelar(pid):
     conn = get_conn()
     p = conn.execute("SELECT id,status,cacamba_id FROM pedidos WHERE id=?",(pid,)).fetchone()
     if not p or p["status"] not in ("confirmado","no_endereco"):
-        conn.close(); flash("Não é possível cancelar este pedido.","erro"); return redirect(url_for("pedidos"))
+        conn.close()
+        flash("Não é possível cancelar este pedido.","erro")
+        return redirect(url_for("pedidos"))
     if p["cacamba_id"]:
         conn.execute("UPDATE cacambas SET status='disponivel' WHERE id=?",(p["cacamba_id"],))
     fim_real = date.today().isoformat()
-    conn.execute("UPDATE pedidos SET status='cancelado', data_fim_real=? WHERE id=?",(fim_real, pid,))
-    conn.commit(); conn.close()
+    conn.execute("UPDATE pedidos SET status='cancelado', data_fim_real=? WHERE id=?",(fim_real, pid))
+    conn.commit()
+    conn.close()
     flash("Pedido cancelado. Caçamba liberada.","ok")
     return redirect(request.referrer or url_for("pedidos"))
 
@@ -665,7 +707,8 @@ def pedido_cancelar(pid):
 def pedido_pagar(pid):
     conn = get_conn()
     conn.execute("UPDATE pedidos SET pago=1 WHERE id=?",(pid,))
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
     flash("Pagamento registrado.","ok")
     origem = request.form.get("origem","")
     if origem.startswith("cliente_"):
@@ -679,12 +722,13 @@ def pedido_observacao(pid):
     obs = request.form.get("observacoes","").strip()
     conn = get_conn()
     conn.execute("UPDATE pedidos SET observacoes=? WHERE id=?",(obs,pid))
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
     flash("Observação salva.","ok")
     return redirect(request.referrer or url_for("pedidos"))
 
 
-# ╔══════════════════════════════════════════════════════════╗
+# ╔════════════════════════════════════════════════════════╗
 # ║  OPERAÇÕES (entregas + retiradas do dia)                 ║
 # ╚══════════════════════════════════════════════════════════╝
 
@@ -692,19 +736,15 @@ def pedido_observacao(pid):
 def operacoes():
     conn = get_conn()
     hoje_iso = date.today().isoformat()
-    # Entregas pendentes: confirmados esperando motorista
     entregas = conn.execute(
         _PEDIDO_SELECT +
         " WHERE p.status='confirmado' ORDER BY p.id"
     ).fetchall()
-    # Caçambas no endereço
     no_end = conn.execute(
         _PEDIDO_SELECT +
         " WHERE p.status='no_endereco' ORDER BY p.data_fim_prevista"
     ).fetchall()
-    # Vencidas (prazo ultrapassado)
     vencidas = [p for p in no_end if p["data_fim_prevista"] and p["data_fim_prevista"] < hoje_iso]
-    # Retiradas hoje
     retiradas_hoje = [p for p in no_end if p["data_fim_prevista"] == hoje_iso]
     conn.close()
     return render_template("operacoes.html",
@@ -713,18 +753,18 @@ def operacoes():
         motoristas=_get_motoristas(), hoje=hoje_iso)
 
 
-# ╔══════════════════════════════════════════════════════════╗
+# ╔════════════════════════════════════════════════════════╗
 # ║  FINANCEIRO                                              ║
 # ╚══════════════════════════════════════════════════════════╝
 
 @app.route("/financeiro")
 def financeiro():
-    f = request.args.get("f","")   # pago / pendente / todos
+    f = request.args.get("f","")
     q = request.args.get("q","").strip()
     conn = get_conn()
 
     where, params = [], []
-    where.append("p.status != 'pendente'")   # só os que já foram confirmados
+    where.append("p.status != 'pendente'")
     if f == "pago":    where.append("p.pago=1")
     if f == "pendente": where.append("p.pago=0")
     if q: where.append("c.nome LIKE ?"); params.append(f"%{q}%")
@@ -746,7 +786,7 @@ def financeiro():
         hoje=date.today().isoformat())
 
 
-# ╔══════════════════════════════════════════════════════════╗
+# ╔════════════════════════════════════════════════════════╗
 # ║  MAPA                                                    ║
 # ╚══════════════════════════════════════════════════════════╝
 
@@ -784,7 +824,7 @@ def mapa():
         hoje_iso=hoje.isoformat())
 
 
-# ╔══════════════════════════════════════════════════════════╗
+# ╔════════════════════════════════════════════════════════╗
 # ║  CONFIGURAÇÕES                                           ║
 # ╚══════════════════════════════════════════════════════════╝
 
@@ -805,7 +845,8 @@ def configuracoes():
                      ("empresa_nome", empresa),
                      ("empresa_fone", fone_empresa)]:
             conn.execute("INSERT OR REPLACE INTO config (chave,valor) VALUES (?,?)",(k,v))
-        conn.commit(); conn.close()
+        conn.commit()
+        conn.close()
         flash("Configurações salvas.","ok")
         return redirect(url_for("configuracoes"))
 
@@ -840,12 +881,13 @@ def motorista_novo():
 def motorista_excluir(mid):
     conn = get_conn()
     conn.execute("DELETE FROM motoristas WHERE id=?",(mid,))
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
     flash("Motorista removido.","ok")
     return redirect(url_for("configuracoes"))
 
 
-# ╔══════════════════════════════════════════════════════════╗
+# ╔════════════════════════════════════════════════════════╗
 # ║  RESET                                                   ║
 # ╚══════════════════════════════════════════════════════════╝
 
@@ -855,14 +897,16 @@ def reset_banco():
         conn = get_conn()
         for t in ("pedidos","enderecos_cliente","clientes","cacambas","motoristas","config"):
             conn.execute(f"DROP TABLE IF EXISTS {t}")
-        conn.commit(); conn.close()
-        init_db(); seed_if_empty()
+        conn.commit()
+        conn.close()
+        init_db()
+        seed_if_empty()
         flash("Banco resetado.","ok")
         return redirect(url_for("index"))
     return render_template("reset.html")
 
 
-# ╔══════════════════════════════════════════════════════════╗
+# ╔════════════════════════════════════════════════════════╗
 # ║  APIs JSON                                               ║
 # ╚══════════════════════════════════════════════════════════╝
 
@@ -894,6 +938,25 @@ def api_cliente_enderecos(cid):
     ).fetchall()
     conn.close()
     return Response(json.dumps([dict(r) for r in rows]), mimetype="application/json")
+
+
+@app.route("/api/clientes/search")
+def api_clientes_search():
+    q = request.args.get("q", "").strip()
+    conn = get_conn()
+    if q:
+        like = f"%{q}%"
+        rows = conn.execute(
+            """SELECT id, nome FROM clientes
+               WHERE nome LIKE ? OR cpf LIKE ? OR cnpj LIKE ?
+               ORDER BY nome LIMIT 20""",
+            (like, like, like)
+        ).fetchall()
+    else:
+        rows = conn.execute("SELECT id, nome FROM clientes ORDER BY nome LIMIT 20").fetchall()
+    conn.close()
+    results = [{"id": r["id"], "text": r["nome"]} for r in rows]
+    return Response(json.dumps(results), mimetype="application/json")
 
 
 @app.route("/api/stats")

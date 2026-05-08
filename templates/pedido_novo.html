@@ -1,196 +1,112 @@
 {% extends "base.html" %}
-{% block title %}Nova solicitação{% endblock %}
+{% block title %}Novo Pedido{% endblock %}
+{% block topbar_title %}Novo Pedido{% endblock %}
+{% block breadcrumbs %}
+  <a href="{{ url_for('index') }}">Dashboard</a>
+  <span class="separator">/</span>
+  <a href="{{ url_for('pedidos') }}">Pedidos</a>
+  <span class="separator">/</span>
+  <span class="current">Novo Pedido</span>
+{% endblock %}
+
+{% block head_extra %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+{% endblock %}
+
 {% block content %}
-<section class="page-head">
-  <div>
-    <h2>Nova solicitação de locação</h2>
-    <p>Selecione o cliente, tamanho da caçamba e endereço da obra.</p>
-  </div>
-  {% if pre_cliente_id %}
-  <a class="btn btn-sec" href="{{ url_for('cliente_detalhe', cid=pre_cliente_id) }}">← Voltar ao cliente</a>
-  {% else %}
-  <a class="btn btn-sec" href="{{ url_for('pedidos') }}">← Voltar</a>
-  {% endif %}
-</section>
-
-{% if not clientes %}
 <div class="card">
-  <div class="empty-state">
-    Cadastre pelo menos um <a href="{{ url_for('cliente_novo') }}">cliente</a> antes de criar a solicitação.
-  </div>
-</div>
-{% else %}
-<div class="card form-card">
-  <form method="post" class="form-pedido">
-
-    <h3 class="secao-titulo">Cliente e tamanho</h3>
+  <h2 class="card-title">Criar Novo Pedido</h2>
+  <form method="POST" action="{{ url_for('pedido_novo') }}">
     <div class="form-grid">
-      <div>
+      <div class="form-group span-2">
         <label for="cliente_id">Cliente *</label>
-        <select id="cliente_id" name="cliente_id" required>
-          <option value="">Escolha o cliente</option>
-          {% for c in clientes %}
-          <option value="{{ c.id }}" {% if pre_cliente_id and pre_cliente_id|int == c.id %}selected{% endif %}>{{ c.nome }}</option>
-          {% endfor %}
+        <select id="cliente_id" name="cliente_id" class="select2" style="width: 100%" required data-placeholder="Selecione o cliente" data-allow-clear="true">
+          <option></option>
         </select>
       </div>
-      <div>
-        <label for="capacidade_m3">Tamanho da caçamba *</label>
-        <select id="capacidade_m3" name="capacidade_m3" required>
-          <option value="">Escolha o tamanho</option>
-          <option value="3">3 m³ — compacta</option>
-          <option value="4">4 m³ — grande</option>
+
+      <div class="form-group">
+        <label for="capacidade">Capacidade (m³) *</label>
+        <select id="capacidade" name="capacidade" class="select-cacamba" data-cap="{{ cap }}" required>
+          <option value="3">3 m³ (R$ 300,00)</option>
+          <option value="4">4 m³ (R$ 330,00)</option>
         </select>
       </div>
-    </div>
 
-    <h3 class="secao-titulo">Endereço da obra</h3>
-    <p class="hint">Escolha um endereço já cadastrado do cliente ou adicione um novo.</p>
-
-    <div class="form-grid-obra">
-      <div class="span-full">
-        <label for="endereco_id">Endereços do cliente</label>
-        <select id="endereco_id" name="endereco_id" required>
-          <option value="">— Selecione o cliente primeiro —</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Painel de detalhes do endereço (preenchimento automático ou novo) -->
-    <div id="painel-endereco" class="painel-endereco">
-      <div id="preview-endereco" class="preview-endereco" style="display:none">
-        <!-- Preenchido via JS quando seleciona endereço existente -->
+      <div class="form-group">
+        <label for="data_fim_prevista">Data Prevista de Retirada *</label>
+        <input type="date" id="data_fim_prevista" name="data_fim_prevista" required>
       </div>
 
-      <div id="form-novo-endereco" style="display:none">
-        <div class="form-grid-obra">
-          <div>
-            <label for="obra_cep">CEP *</label>
-            <input id="obra_cep" name="obra_cep" data-mask="cep" data-cep-autofill inputmode="numeric"
-                   autocomplete="postal-code" placeholder="17000-000" maxlength="9">
-            <small class="field-note" data-cep-status aria-live="polite"></small>
-          </div>
-          <div class="span-2">
-            <label for="obra_rua">Rua / logradouro *</label>
-            <input id="obra_rua" name="obra_rua" placeholder="Ex.: Rua Antônio Alves">
-          </div>
-          <div>
-            <label for="obra_quadra">Quadra</label>
-            <input id="obra_quadra" name="obra_quadra" placeholder="Ex.: 12" inputmode="numeric">
-          </div>
-          <div>
-            <label for="obra_numero">Número *</label>
-            <input id="obra_numero" name="obra_numero" placeholder="Ex.: 1200" inputmode="numeric">
-          </div>
-          <div>
-            <label for="obra_bairro">Bairro</label>
-            <input id="obra_bairro" name="obra_bairro" placeholder="Ex.: Vila Industrial">
-          </div>
-          <div>
-            <label for="endereco_complemento">Complemento</label>
-            <input id="endereco_complemento" name="endereco_complemento" placeholder="Ex.: Fundos">
-          </div>
-          <div>
-            <label for="endereco_apelido">Apelido</label>
-            <input id="endereco_apelido" name="endereco_apelido" placeholder="Ex.: Obra Centro">
-          </div>
-        </div>
-        <p class="hint">Este endereço será salvo no cadastro do cliente automaticamente.</p>
+      <div class="form-group span-2">
+        <label for="cep">CEP da Obra *</label>
+        <input type="text" id="cep" name="cep" data-mask="cep" data-cep-autofill data-cep-status placeholder="XXXXX-XXX" required>
+        <small class="field-note" data-cep-status></small>
       </div>
-    </div>
 
-      <div>
+      <div class="form-group span-2">
+        <label for="obra_rua">Rua *</label>
+        <input type="text" id="obra_rua" name="obra_rua" required>
+      </div>
+
+      <div class="form-group">
+        <label for="obra_numero">Número *</label>
+        <input type="text" id="obra_numero" name="obra_numero" required>
+      </div>
+
+      <div class="form-group">
+        <label for="obra_bairro">Bairro *</label>
+        <input type="text" id="obra_bairro" name="obra_bairro" required>
+      </div>
+
+      <div class="form-group span-2">
         <label for="observacoes">Observações</label>
-        <textarea id="observacoes" name="observacoes" rows="4" placeholder="Ex.: ligar antes de entregar"></textarea>
+        <textarea id="observacoes" name="observacoes" rows="3"></textarea>
       </div>
+    </div>
 
-      <p class="hint" style="margin-top:1rem">⏱ A retirada será calculada para <strong>{{ dias_locacao }} dias corridos</strong> após a entrega.</p>
-      (addr.complemento ? '<small>' + addr.complemento + '</small>' : '') +
-      '</div>';
-    preview.style.display = 'block';
-    formNovo.style.display = 'none';
+    <div class="form-actions">
+      <button type="submit" class="btn btn-ok">Salvar Pedido</button>
+      <a href="{{ url_for('pedidos') }}" class="btn btn-sec">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+  $(document).ready(function() {
+    // Initialize Select2 with AJAX search
+$('#cliente_id').select2({
+  placeholder: 'Digite o nome, CPF ou CNPJ do cliente',
+  allowClear: true,
+  ajax: {
+    url: '{{ url_for("api_clientes_search") }}',
+    dataType: 'json',
+    delay: 300,
+    data: function(params) {
+      return { q: params.term || '' };
+    },
+    processResults: function(data) {
+      return { results: data };
+    },
+    cache: true
+  },
+  minimumInputLength: 1,
+  templateResult: function(cliente) {
+    if (cliente.loading) return cliente.text;
+    return $('<span>' + cliente.text + '</span>');
+  },
+  templateSelection: function(cliente) {
+    return cliente.text || cliente.id;
   }
+});
 
-  function showFormNovo() {
-    preview.style.display = 'none';
-    formNovo.style.display = 'block';
-  }
-
-  function clearFormNovo() {
-    if (obraCep) obraCep.value = '';
-    if (obraRua) obraRua.value = '';
-    if (obraQuadra) obraQuadra.value = '';
-    if (obraNumero) obraNumero.value = '';
-    if (obraBairro) obraBairro.value = '';
-    var comp = document.getElementById('endereco_complemento');
-    var apel = document.getElementById('endereco_apelido');
-    if (comp) comp.value = '';
-    if (apel) apel.value = '';
-  }
-
-  function populateAddressList(data) {
-    addresses = data || [];
-    enderecoSelect.innerHTML = '';
-
-    if (!addresses.length) {
-      enderecoSelect.innerHTML = '<option value="novo">+ Adicionar novo endereço</option>';
-      clearFormNovo();
-      showFormNovo();
-      return;
-    }
-
-    enderecoSelect.innerHTML = '<option value="">— Escolha o endereço —</option>';
-    addresses.forEach(function(a) {
-      var label = a.apelido ? '[' + a.apelido + '] ' : '';
-      label += a.rua;
-      if (a.quadra) label += ', Q.' + a.quadra;
-      if (a.numero) label += ', nº ' + a.numero;
-      if (a.bairro) label += ' — ' + a.bairro;
-      enderecoSelect.innerHTML += '<option value="' + a.id + '">' + label + '</option>';
-    });
-    enderecoSelect.innerHTML += '<option value="novo">+ Adicionar novo endereço</option>';
-
-    preview.style.display = 'none';
-    formNovo.style.display = 'none';
-  }
-
-  enderecoSelect.addEventListener('change', function() {
-    var val = enderecoSelect.value;
-    if (val === 'novo') {
-      clearFormNovo();
-      showFormNovo();
-      return;
-    }
-    if (!val) {
-      preview.style.display = 'none';
-      formNovo.style.display = 'none';
-      return;
-    }
-    var addr = addresses.find(function(a){ return String(a.id) === val; });
-    if (addr) showPreview(addr);
+    // Set minimum date for retirada (today)
+    var today = new Date().toISOString().split('T')[0];
+    document.getElementById('data_fim_prevista').min = today;
   });
-
-  clienteSelect.addEventListener('change', function() {
-    var cid = clienteSelect.value;
-    if (!cid) {
-      enderecoSelect.innerHTML = '<option value="">— Selecione o cliente primeiro —</option>';
-      preview.style.display = 'none';
-      formNovo.style.display = 'none';
-      return;
-    }
-    fetch('/api/clientes/' + cid + '/enderecos')
-      .then(function(r){ return r.ok ? r.json() : []; })
-      .then(populateAddressList)
-      .catch(function(){ enderecoSelect.innerHTML = '<option value="novo">+ Adicionar novo endereço</option>'; showFormNovo(); });
-  });
-
-  var initClient = '{{ pre_cliente_id or "" }}';
-  if (initClient) {
-    fetch('/api/clientes/' + initClient + '/enderecos')
-      .then(function(r){ return r.ok ? r.json() : []; })
-      .then(populateAddressList)
-      .catch(function(){ enderecoSelect.innerHTML = '<option value="novo">+ Adicionar novo endereço</option>'; showFormNovo(); });
-  }
-})();
 </script>
 {% endblock %}

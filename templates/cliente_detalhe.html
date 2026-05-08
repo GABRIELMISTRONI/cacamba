@@ -26,10 +26,18 @@
 <div class="card">
   <h3 class="card-title">Dados de contato</h3>
   <div class="detalhe-grid">
-    <div>
-      <span class="detalhe-label">Telefone</span>
-      <span class="detalhe-val">{{ cliente.telefone }}</span>
-    </div>
+      <div>
+        <span class="detalhe-label">Telefone</span>
+        <span class="detalhe-val">
+          {{ cliente.telefone }}
+          {% if cliente.telefone %}
+          <a href="https://wa.me/55{{ cliente.telefone|replace(' ','')|replace('(','')|replace(')','')|replace('-','') }}?text=Olá, sua caçamba será entregue hoje." 
+             target="_blank" class="btn btn-sm" style="margin-left:.5rem; background:#25D366; color:white; border:none;">
+            📱 WhatsApp
+          </a>
+          {% endif %}
+        </span>
+      </div>
     <div>
       <span class="detalhe-label">E-mail</span>
       <span class="detalhe-val">{{ cliente.email or '—' }}</span>

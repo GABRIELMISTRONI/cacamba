@@ -6,6 +6,9 @@
   <title>{% block title %}Caçambas{% endblock %} — Bauru/SP</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/icone-cacamba.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   {% block head_extra %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -24,6 +27,7 @@
     </div>
 
     <nav class="sidebar-nav">
+  <div class="breadcrumbs" id="breadcrumbs"></div>
       <span class="nav-section">Principal</span>
       <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
         <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span>
@@ -74,15 +78,25 @@
   <!-- ── Main wrapper ─────────────────────────────────────── -->
   <div class="layout-main">
     <!-- Topbar mobile -->
-    <header class="topbar">
-      <button class="topbar-toggle" onclick="toggleSidebar()" aria-label="Menu">
-        <span></span><span></span><span></span>
-      </button>
-      <span class="topbar-title">{% block topbar_title %}{% block title2 %}{% endblock %}{% endblock %}</span>
-      <div class="topbar-actions">{% block topbar_actions %}{% endblock %}</div>
-    </header>
+     <header class="topbar">
+       <button class="topbar-toggle" onclick="toggleSidebar()" aria-label="Menu">
+         <span></span><span></span><span></span>
+       </button>
+       <span class="topbar-title">{% block topbar_title %}{% block title2 %}{% endblock %}{% endblock %}</span>
+       <div class="topbar-actions">
+         {% block topbar_actions %}{% endblock %}
+         <button class="btn btn-sm" id="theme-toggle" aria-label="Alternar tema" title="Alternar tema">
+           <span id="theme-icon">🌙</span>
+         </button>
+       </div>
+     </header>
 
     <main class="{% block main_class %}main-shell{% endblock %}">
+      <!-- Breadcrumbs -->
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        {% block breadcrumbs %}{% endblock %}
+      </nav>
+
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           <div class="flash-wrap">
@@ -94,6 +108,19 @@
       {% endwith %}
       {% block content %}{% endblock %}
     </main>
+
+    <!-- Modal container -->
+    <div id="modal-backdrop" class="modal-backdrop" style="display:none;"></div>
+    <div id="modal" class="modal" role="dialog" aria-modal="true" style="display:none;">
+      <div class="modal-content">
+        <button class="modal-close" aria-label="Fechar" onclick="closeModal()">&times;</button>
+        <div id="modal-body"></div>
+        <div class="modal-actions">
+          <button class="btn btn-sec" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-primary" id="modal-confirm">OK</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="{{ url_for('static', filename='app.js') }}"></script>
