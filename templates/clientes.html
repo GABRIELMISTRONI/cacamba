@@ -1,26 +1,48 @@
 {% extends "base.html" %}
 {% block title %}Clientes{% endblock %}
+{% block topbar_title %}Clientes{% endblock %}
+{% block breadcrumbs %}
+  <a href="{{ url_for('index') }}">Dashboard</a>
+  <span class="separator">/</span>
+  <span class="current">Clientes</span>
+{% endblock %}
+
 {% block content %}
 <section class="page-head">
   <div>
     <h2>Clientes</h2>
-    <p>Pesquise por nome, CPF/CNPJ ou endereço. Clique no cliente para ver detalhes e histórico.</p>
+    <p>Busque por nome, CPF/CNPJ, telefone, endereço ou bairro.</p>
   </div>
   <div class="actions">
-    <a class="btn" href="{{ url_for('cliente_novo') }}">Novo cliente</a>
+    <a class="btn" href="{{ url_for('cliente_novo') }}">+ Novo cliente</a>
   </div>
 </section>
 
-<div class="card busca-card">
-  <form method="get" action="{{ url_for('clientes') }}" class="busca-form">
-    <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar por nome, CPF, CNPJ ou endereço…" autocomplete="off" class="busca-input">
-    <button type="submit" class="btn">Buscar</button>
-    {% if busca %}<a class="btn btn-sec" href="{{ url_for('clientes') }}">Limpar</a>{% endif %}
-  </form>
+<!-- Busca com dropdown -->
+<div class="card busca-card" style="padding:.85rem 1.2rem">
+  <div style="position:relative" id="busca-wrap">
+    <span style="position:absolute;left:.9rem;top:50%;transform:translateY(-50%);font-size:1.05rem;pointer-events:none;opacity:.45;z-index:1">🔍</span>
+    <input type="search" id="busca-live"
+           value="{{ busca }}"
+           placeholder="Digite nome, CPF, telefone, rua, bairro…"
+           autocomplete="off"
+           class="busca-input"
+           style="width:100%;padding-left:2.8rem;font-size:1rem">
+    <button id="btn-limpar" onclick="limparBusca()" title="Limpar"
+            style="display:none;position:absolute;right:.75rem;top:50%;transform:translateY(-50%);
+                   background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--muted)">✕</button>
+    <ul id="dropdown" style="
+        display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;
+        background:var(--surface-color);border:1.5px solid var(--brand);
+        border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.18);
+        list-style:none;margin:0;padding:.3rem 0;z-index:600;
+        max-height:340px;overflow-y:auto;"></ul>
+  </div>
+  <div id="busca-status" style="font-size:.82rem;color:var(--muted);margin-top:.4rem;min-height:1.1em"></div>
 </div>
 
+<!-- Tabela -->
 <div class="card table-wrap">
-  {% if clientes %}
   <table class="tabela-dados">
     <thead>
       <tr>
@@ -28,14 +50,26 @@
         <th>Tipo</th>
         <th>CPF / CNPJ</th>
         <th>Telefone</th>
-        <th>E-mail</th>
+        <th>Endereços</th>
+        <th>Pedidos</th>
       </tr>
     </thead>
-    <tbody>
+    <tbody id="tbody">
       {% for c in clientes %}
-      <tr class="linha-clicavel" onclick="location.href='{{ url_for('cliente_detalhe', cid=c.id) }}'">
-        <td><strong>{{ c.nome }}</strong>{% if c.razao_social %}<br><small class="muted">{{ c.razao_social }}</small>{% endif %}</td>
-        <td><span class="badge-tipo {% if c.tipo_pessoa == 'pj' %}badge-pj{% else %}badge-pf{% endif %}">{{ 'PJ' if c.tipo_pessoa == 'pj' else 'PF' }}</span></td>
+      <tr class="linha-clicavel" id="row-{{ c.id }}"
+          onclick="location.href='{{ url_for('cliente_detalhe', cid=c.id) }}'">
+        <td>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <span class="cliente-avatar">{{ c.nome[0]|upper }}</span>
+            <div>
+              <strong class="campo-nome" id="nome-{{ c.id }}">{{ c.nome }}</strong>
+              {% if c.razao_social %}<br><small class="muted">{{ c.razao_social }}</small>{% endif %}
+              {% if c.email %}<br><small class="muted">{{ c.email }}</small>{% endif %}
+            </div>
+          </div>
+        </td>
+        <td><span class="badge-tipo {% if c.tipo_pessoa == 'pj' %}badge-pj{% else %}badge-pf{% endif %}">
+          {{ 'PJ' if c.tipo_pessoa == 'pj' else 'PF' }}</span></td>
         <td class="mono">
           {% if c.tipo_pessoa == 'pj' and c.cnpj and c.cnpj|length == 14 %}
             {{ c.cnpj[0:2] }}.{{ c.cnpj[2:5] }}.{{ c.cnpj[5:8] }}/{{ c.cnpj[8:12] }}-{{ c.cnpj[12:14] }}
@@ -43,19 +77,253 @@
             {{ c.cpf[0:3] }}.{{ c.cpf[3:6] }}.{{ c.cpf[6:9] }}-{{ c.cpf[9:11] }}
           {% else %}{{ c.cpf or c.cnpj or '—' }}{% endif %}
         </td>
-        <td>{{ c.telefone }}</td>
-        <td>{{ c.email or '—' }}</td>
+        <td>{{ c.telefone or '—' }}</td>
+        <td>
+          {% set ends = enderecos_map.get(c.id, []) %}
+          {% if ends %}
+            {# Primeiro endereço em destaque (vem do enderecos_cliente — tem quadra) #}
+            {% set e0 = ends[0] %}
+            <div style="font-weight:500">
+              {% if e0.apelido %}<em style="font-style:normal;background:var(--surface-soft);border-radius:4px;padding:.05rem .35rem;font-size:.72rem;font-weight:700;margin-right:.25rem">{{ e0.apelido }}</em>{% endif %}
+              {{ e0.rua }}{% if e0.quadra %}, Q.{{ e0.quadra }}{% endif %}{% if e0.numero %}, nº {{ e0.numero }}{% endif %}{% if e0.bairro %} — {{ e0.bairro }}{% endif %}
+            </div>
+            {# Demais endereços menores #}
+            {% for e in ends[1:] %}
+            <div style="font-size:.8rem;color:var(--muted);margin-top:.15rem">
+              {% if e.apelido %}<em style="font-style:normal;background:var(--surface-soft);border-radius:4px;padding:.05rem .35rem;font-size:.72rem;font-weight:700;margin-right:.2rem">{{ e.apelido }}</em>{% endif %}
+              {{ e.rua }}{% if e.quadra %}, Q.{{ e.quadra }}{% endif %}{% if e.numero %}, nº {{ e.numero }}{% endif %}{% if e.bairro %} — {{ e.bairro }}{% endif %}
+            </div>
+            {% endfor %}
+          {% elif c.rua %}
+            {# Fallback: endereço do cadastro principal (sem quadra) #}
+            <div>{{ c.rua }}{% if c.numero %}, nº {{ c.numero }}{% endif %}</div>
+          {% else %}
+            <span class="muted">—</span>
+          {% endif %}
+        </td>
+        <td>
+          {% set n = counts.get(c.id, 0) %}
+          {% if n %}<span class="badge-count">{{ n }}</span>{% else %}<span class="muted">0</span>{% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-  {% if busca %}
-  <p class="hint">{{ clientes|length }} resultado(s) para "<strong>{{ busca }}</strong>".</p>
-  {% endif %}
-  {% else %}
-  <div class="empty-state">
-    {% if busca %}Nenhum cliente encontrado para "<strong>{{ busca }}</strong>".{% else %}Nenhum cliente cadastrado.{% endif %}
+  <div id="empty-msg" style="display:none" class="empty-state">
+    <span class="empty-icon">🔍</span>
+    <p>Nenhum resultado para "<strong id="empty-termo"></strong>".</p>
+    <button class="btn btn-sec btn-sm" onclick="limparBusca()">Limpar busca</button>
   </div>
-  {% endif %}
 </div>
+
+{# Dados dos clientes em JSON seguro — sem risco de aspas quebrarem HTML #}
+<script id="clientes-json" type="application/json">
+[{% for c in clientes %}{% if not loop.first %},{% endif %}
+{"id":{{ c.id }},
+ "href":"{{ url_for('cliente_detalhe', cid=c.id) }}",
+ "nome":{{ c.nome | tojson }},
+ "doc":"{% if c.tipo_pessoa == 'pj' and c.cnpj and c.cnpj|length == 14 %}{{ c.cnpj[0:2] }}.{{ c.cnpj[2:5] }}.{{ c.cnpj[5:8] }}/{{ c.cnpj[8:12] }}-{{ c.cnpj[12:14] }}{% elif c.cpf and c.cpf|length == 11 %}{{ c.cpf[0:3] }}.{{ c.cpf[3:6] }}.{{ c.cpf[6:9] }}-{{ c.cpf[9:11] }}{% endif %}",
+ "tel":{{ (c.telefone or '') | tojson }},
+ "ini":{{ (c.nome[0]|upper if c.nome else '?') | tojson }},
+ "busca":{{ c.busca_txt | tojson }},
+ "end":{{ c.end_full | tojson }}
+}{% endfor %}]
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  // Carrega dados do JSON embutido — 100% seguro, sem risco de quebrar HTML
+  var CLIENTES = JSON.parse(document.getElementById('clientes-json').textContent);
+  var tbody    = document.getElementById('tbody');
+  var dropdown = document.getElementById('dropdown');
+  var input    = document.getElementById('busca-live');
+  var status   = document.getElementById('busca-status');
+  var btnLimpar= document.getElementById('btn-limpar');
+  var emptyMsg = document.getElementById('empty-msg');
+  var emptyTermo = document.getElementById('empty-termo');
+  var ativo    = -1;
+
+  /* normaliza: minúsculo + sem acento + sem pontuação */
+  function norm(s) {
+    return (s || '').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[.\-\/\(\)]/g, ' ').replace(/\s+/,' ').trim();
+  }
+
+  /* marca termo em texto puro, retorna HTML seguro */
+  function mark(texto, termos) {
+    // Escapa HTML primeiro
+    var s = texto.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    termos.forEach(function(t) {
+      var e = t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      s = s.replace(new RegExp('('+e+')','gi'),
+        '<mark style="background:#fff176;border-radius:2px;padding:0 1px;font-weight:800">$1</mark>');
+    });
+    return s;
+  }
+
+  /* filtra linhas da tabela */
+  function filtrarTabela(termos) {
+    // limpa highlights
+    tbody.querySelectorAll('mark').forEach(function(m){ m.outerHTML = m.textContent; });
+
+    var visiveis = 0;
+    CLIENTES.forEach(function(c) {
+      var tr = document.getElementById('row-' + c.id);
+      if (!tr) return;
+      var match = termos.length === 0 || termos.every(function(t){ return norm(c.busca).indexOf(t) !== -1; });
+      tr.style.display = match ? '' : 'none';
+      if (match) {
+        visiveis++;
+        var nomeEl = document.getElementById('nome-' + c.id);
+        if (nomeEl) nomeEl.innerHTML = termos.length ? mark(c.nome, termos) : c.nome.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      }
+    });
+    return visiveis;
+  }
+
+  /* monta dropdown */
+  function mostrarDropdown(q, termos) {
+    var matches = CLIENTES.filter(function(c){
+      return termos.every(function(t){ return norm(c.busca).indexOf(t) !== -1; });
+    });
+
+    if (!q || matches.length === 0) { dropdown.style.display='none'; return; }
+
+    dropdown.innerHTML = '';
+    ativo = -1;
+    var limite = Math.min(matches.length, 8);
+
+    for (var i = 0; i < limite; i++) {
+      (function(c, idx){
+        var li = document.createElement('li');
+        li.style.cssText = 'display:flex;align-items:flex-start;gap:.65rem;padding:.6rem .9rem;cursor:pointer;border-radius:8px;margin:.1rem .3rem;transition:background .12s';
+
+        // Avatar
+        var av = document.createElement('span');
+        av.style.cssText = 'width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--brand-dark,#a0440d));color:#fff;font-weight:800;font-size:.85rem;display:flex;align-items:center;justify-content:center;flex-shrink:0';
+        av.textContent = c.ini;
+
+        // Info
+        var info = document.createElement('div');
+        info.style.cssText = 'flex:1;min-width:0';
+
+        var nomeLine = document.createElement('div');
+        nomeLine.style.cssText = 'font-weight:700;font-size:.93rem;';
+        nomeLine.innerHTML = mark(c.nome, termos);
+
+        var sub = document.createElement('div');
+        sub.style.cssText = 'font-size:.8rem;color:var(--muted);display:flex;flex-direction:column;gap:.15rem;margin-top:.2rem';
+
+        if (c.doc)  sub.innerHTML += '<span style="white-space:nowrap">🪪 ' + mark(c.doc, termos) + '</span>';
+        if (c.tel)  sub.innerHTML += '<span style="white-space:nowrap">📞 ' + mark(c.tel, termos) + '</span>';
+        if (c.end) {
+          c.end.split('|').forEach(function(e) {
+            var et = e.trim();
+            if (et) sub.innerHTML += '<span>📍 ' + mark(et, termos) + '</span>';
+          });
+        }
+
+        info.appendChild(nomeLine);
+        info.appendChild(sub);
+        li.appendChild(av);
+        li.appendChild(info);
+
+        li.addEventListener('mouseenter', function(){ setAtivo(idx); });
+        li.addEventListener('mouseleave', function(){ li.style.background=''; });
+        li.addEventListener('mousedown',  function(e){
+          e.preventDefault();
+          window.location.href = c.href;
+        });
+
+        dropdown.appendChild(li);
+      })(matches[i], i);
+    }
+
+    if (matches.length > 8) {
+      var mais = document.createElement('li');
+      mais.style.cssText = 'text-align:center;font-size:.77rem;color:var(--muted);padding:.4rem;border-top:1px solid var(--line);margin-top:.25rem';
+      mais.textContent = '+ ' + (matches.length - 8) + ' outros resultados abaixo';
+      dropdown.appendChild(mais);
+    }
+
+    dropdown.style.display = 'block';
+  }
+
+  function setAtivo(idx) {
+    var items = dropdown.children;
+    for (var i = 0; i < items.length; i++) {
+      items[i].style.background = i === idx ? 'var(--surface-soft)' : '';
+    }
+    ativo = idx;
+  }
+
+  function fecharDropdown() { dropdown.style.display = 'none'; ativo = -1; }
+
+  /* evento principal */
+  input.addEventListener('input', function() {
+    var q      = input.value;
+    var termos = norm(q).split(/\s+/).filter(Boolean);
+    var vis    = filtrarTabela(termos);
+
+    btnLimpar.style.display = q ? 'block' : 'none';
+
+    if (!q) {
+      emptyMsg.style.display = 'none';
+      status.textContent = CLIENTES.length + ' cliente(s) cadastrado(s)';
+      fecharDropdown();
+      return;
+    }
+
+    mostrarDropdown(q, termos);
+
+    if (vis === 0) {
+      emptyMsg.style.display = 'flex';
+      emptyTermo.textContent = q;
+      status.textContent = '';
+    } else {
+      emptyMsg.style.display = 'none';
+      status.innerHTML = '<strong>' + vis + '</strong> de ' + CLIENTES.length + ' cliente(s)';
+    }
+  });
+
+  /* teclado: setas e enter */
+  input.addEventListener('keydown', function(e) {
+    var items = Array.from(dropdown.querySelectorAll('li[style*="cursor:pointer"]'));
+    if (dropdown.style.display !== 'none' && items.length) {
+      if (e.key === 'ArrowDown')  { e.preventDefault(); setAtivo(Math.min(ativo+1, items.length-1)); return; }
+      if (e.key === 'ArrowUp')    { e.preventDefault(); setAtivo(Math.max(ativo-1, 0)); return; }
+      if (e.key === 'Enter' && ativo >= 0) {
+        e.preventDefault();
+        items[ativo].dispatchEvent(new MouseEvent('mousedown'));
+        return;
+      }
+    }
+    if (e.key === 'Escape') { input.value=''; input.dispatchEvent(new Event('input')); }
+  });
+
+  input.addEventListener('blur',  function(){ setTimeout(fecharDropdown, 150); });
+  input.addEventListener('focus', function(){
+    if (input.value.trim()) input.dispatchEvent(new Event('input'));
+  });
+
+  document.addEventListener('mousedown', function(e){
+    if (!document.getElementById('busca-wrap').contains(e.target)) fecharDropdown();
+  });
+
+  /* init */
+  status.textContent = CLIENTES.length + ' cliente(s) cadastrado(s)';
+  if (input.value.trim()) input.dispatchEvent(new Event('input'));
+  input.focus();
+})();
+
+function limparBusca() {
+  var i = document.getElementById('busca-live');
+  i.value = '';
+  i.dispatchEvent(new Event('input'));
+  i.focus();
+}
+</script>
 {% endblock %}

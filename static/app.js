@@ -398,3 +398,43 @@
   }, 5000);
 
 })();
+
+// Badge + barra de progresso de dias no local
+document.querySelectorAll('.dias-no-local-badge').forEach(function(el){
+  var inicio = el.dataset.inicio;
+  var prazo  = parseInt(el.dataset.prazo || '7');
+  if (!inicio) return;
+  var dias = Math.floor((new Date() - new Date(inicio)) / 86400000);
+  var pct  = Math.min(100, Math.round(dias / prazo * 100));
+  var cls  = dias >= prazo ? 'dias-vencido' : dias >= prazo-1 ? 'dias-alerta' : dias >= prazo-3 ? 'dias-aviso' : 'dias-ok';
+  var barCls = cls.replace('dias-','');
+  el.className = 'dias-badge ' + cls;
+  el.textContent = dias + ' dia' + (dias !== 1 ? 's' : '');
+  // Inserir barra de progresso após o badge
+  var wrap = document.createElement('div');
+  wrap.className = 'dias-progress';
+  var barWrap = document.createElement('div');
+  barWrap.className = 'dias-bar-wrap';
+  var bar = document.createElement('div');
+  bar.className = 'dias-bar ' + barCls;
+  bar.style.width = pct + '%';
+  barWrap.appendChild(bar);
+  wrap.appendChild(barWrap);
+  el.parentNode.insertBefore(wrap, el.nextSibling);
+});
+
+// Google Maps link para endereços
+document.querySelectorAll('.ops-item-sub').forEach(function(el) {
+  var rua = el.dataset.rua;
+  var num = el.dataset.num;
+  var bai = el.dataset.bairro;
+  if (!rua) return;
+  var q = encodeURIComponent([rua, num, bai, 'Bauru SP'].filter(Boolean).join(', '));
+  var a = document.createElement('a');
+  a.href = 'https://www.google.com/maps/search/?api=1&query=' + q;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  a.className = 'end-link';
+  a.textContent = ' 🗺 Ver no mapa';
+  el.appendChild(a);
+});

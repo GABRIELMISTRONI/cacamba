@@ -44,6 +44,11 @@
   .select2-container--default .select2-results__option--highlighted[aria-selected] { background-color: var(--brand); color: #fff; }
   .select2-container--default .select2-results__option[aria-selected=true] { background-color: var(--surface-soft); }
 
+  /* Resultados ricos do Select2 */
+  .s2-result { display: flex; flex-direction: column; gap: 1px; padding: 2px 0; }
+  .s2-doc    { color: var(--text-muted, #888); font-size: .8rem; }
+  .s2-end    { color: var(--text-muted, #888); font-size: .78rem; }
+
   /* Bloco de novo endereço — fora do form-grid, escondido por padrão */
   #form-novo-endereco {
     display: none;
@@ -155,7 +160,17 @@ $(document).ready(function () {
       cache: true
     },
     minimumInputLength: 0,
-    templateResult:    function (c) { return c.loading ? 'Buscando...' : c.text; },
+    templateResult: function (c) {
+      if (c.loading) return 'Buscando...';
+      var $el = $('<div class="s2-result"></div>');
+      $el.append($('<strong>').text(c.text));
+      var info = [];
+      if (c.doc)      info.push(c.doc);
+      if (c.telefone) info.push(c.telefone);
+      if (info.length) $el.append($('<small class="s2-doc">').text(info.join(' · ')));
+      if (c.endereco) $el.append($('<small class="s2-end">').text('📍 ' + c.endereco));
+      return $el;
+    },
     templateSelection: function (c) { return c.text || c.id; }
   });
 

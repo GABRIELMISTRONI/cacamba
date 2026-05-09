@@ -3,30 +3,37 @@
 {% block topbar_title %}Operações do dia{% endblock %}
 {% block topbar_actions %}<a class="btn btn-sm" href="{{ url_for('pedidos') }}">📄 Todos os pedidos</a>{% endblock %}
 {% block content %}
-<section class="page-head">
-  <div>
-    <h2>Operações</h2>
-    <p>Entregas pendentes e caçambas em campo. Tudo que precisa de ação hoje.</p>
-  </div>
-</section>
 
 {% if vencidas %}
-<div class="alerta-vencidas card">
+<div class="alerta-vencidas card" style="margin-bottom:1rem">
   <strong>⚠ {{ vencidas|length }} caçamba(s) com prazo vencido!</strong>
   Acione a equipe para retirada urgente.
 </div>
 {% endif %}
 
 <!-- Stats rápidos -->
-<div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
-  <div class="stat-card azul"><div class="stat-num">{{ entregas|length }}</div><div class="stat-label">Aguardando entrega</div></div>
-  <div class="stat-card verde"><div class="stat-num">{{ no_end|length }}</div><div class="stat-label">Caçambas no endereço</div></div>
-  <div class="stat-card laranja"><div class="stat-num">{{ retiradas_hoje|length }}</div><div class="stat-label">Retiradas previstas hoje</div></div>
-  <div class="stat-card" style="border-top-color:var(--danger)"><div class="stat-num" style="color:var(--danger)">{{ vencidas|length }}</div><div class="stat-label">Prazo vencido</div></div>
+<div class="stats-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:1rem">
+  <div class="stat-card azul"><div class="stat-num">{{ total_entregas }}</div><div class="stat-label">Aguardando entrega</div></div>
+  <div class="stat-card verde"><div class="stat-num">{{ total_no_end }}</div><div class="stat-label">No endereço</div></div>
+  <div class="stat-card laranja"><div class="stat-num">{{ retiradas_hoje|length }}</div><div class="stat-label">Retiradas hoje</div></div>
+  <div class="stat-card" style="border-top-color:#f59e0b"><div class="stat-num" style="color:#d97706">{{ retiradas_amanha|length }}</div><div class="stat-label">Vence amanhã</div></div>
+  <div class="stat-card" style="border-top-color:var(--danger)"><div class="stat-num" style="color:var(--danger)">{{ vencidas|length }}</div><div class="stat-label">Atrasadas</div></div>
+</div>
+
+<!-- Filtros rápidos -->
+<div class="card" style="padding:.65rem 1rem;margin-bottom:1rem">
+  <div class="filtros-bar" style="flex-wrap:wrap;gap:.4rem">
+    <a href="{{ url_for('operacoes') }}" class="filtro-chip {% if not filtro %}ativo{% endif %}">🔁 Tudo</a>
+    <a href="{{ url_for('operacoes', f='entregar') }}" class="filtro-chip {% if filtro=='entregar' %}ativo{% endif %}">🚚 Para Entregar ({{ total_entregas }})</a>
+    <a href="{{ url_for('operacoes', f='hoje') }}" class="filtro-chip {% if filtro=='hoje' %}ativo{% endif %}">📅 Retirar Hoje ({{ retiradas_hoje|length }})</a>
+    <a href="{{ url_for('operacoes', f='amanha') }}" class="filtro-chip {% if filtro=='amanha' %}ativo{% endif %}">🔔 Vence Amanhã ({{ retiradas_amanha|length }})</a>
+    <a href="{{ url_for('operacoes', f='atrasadas') }}" class="filtro-chip {% if filtro=='atrasadas' %}ativo{% endif %}" style="{% if vencidas %}color:var(--danger);border-color:var(--danger){% endif %}">⚠ Atrasadas ({{ vencidas|length }})</a>
+  </div>
 </div>
 
 <div class="ops-grid">
   <!-- Entregas pendentes -->
+  {% if not filtro or filtro == 'entregar' %}
   <div class="card">
     <div class="ops-header">
       <h3>🚚 Entregas pendentes</h3>
@@ -38,11 +45,12 @@
         <div class="ops-item-title">
           <a class="link-cliente" href="{{ url_for('cliente_detalhe', cid=p.cliente_id) }}">{{ p.cliente_nome }}</a>
           — <strong>{{ p.capacidade_m3 }} m³</strong>
+          <span class="dias-badge dias-neutro">Pedido #{{ p.id }}</span>
         </div>
         <div class="ops-item-sub">
           {{ p.obra_rua }}{% if p.obra_quadra %}, Q.{{ p.obra_quadra }}{% endif %}{% if p.obra_numero %}, nº {{ p.obra_numero }}{% endif %}
           {% if p.obra_bairro %} — {{ p.obra_bairro }}{% endif %}
-          <br>Pedido #{{ p.id }} · {{ p.criado_em }}
+          <br>Solicitado em: {{ p.criado_em }}
         </div>
         <div class="ops-item-actions">
           <form class="form-entrega" method="post" action="{{ url_for('pedido_entregar', pid=p.id) }}">
@@ -62,6 +70,7 @@
       <div class="empty-state" style="padding:1.5rem">Nenhuma entrega pendente. 🎉</div>
     {% endif %}
   </div>
+  {% endif %}
 
   <!-- Caçambas no endereço -->
   <div class="card">
@@ -71,45 +80,94 @@
     </div>
     {% if no_end %}
       {% for p in no_end %}
-      {% set venc = p.data_fim_prevista and p.data_fim_prevista < hoje %}
-      {% set hoje_ret = p.data_fim_prevista == hoje %}
-      <div class="ops-item {% if venc %}ops-item-vencida{% elif hoje_ret %}ops-item-hoje{% endif %}">
+      {% set venc    = p.data_fim_prevista and p.data_fim_prevista < hoje %}
+      {% set hoje_r  = p.data_fim_prevista == hoje %}
+      {% set amanha_r = p.data_fim_prevista == amanha %}
+      {% set dias    = p.dias_no_local %}
+      <div class="ops-item {% if venc %}ops-item-vencida{% elif hoje_r %}ops-item-hoje{% endif %}">
         <div class="ops-item-title">
-          {% if venc %}<span class="badge-vencido">VENCIDA</span> {% elif hoje_ret %}<span class="badge-hoje">HOJE</span> {% endif %}
+          {% if venc %}
+            <span class="badge-vencido">VENCIDA</span>
+          {% elif hoje_r %}
+            <span class="badge-hoje">HOJE</span>
+          {% elif amanha_r %}
+            <span class="badge-amanha">AMANHÃ</span>
+          {% endif %}
           <a class="link-cliente" href="{{ url_for('cliente_detalhe', cid=p.cliente_id) }}">{{ p.cliente_nome }}</a>
           — Cç <strong>#{{ p.cacamba_codigo or '?' }}</strong> ({{ p.capacidade_m3 }} m³)
+          <!-- Badge de dias no local -->
+          {% if venc %}
+            <span class="dias-badge dias-vencido">{{ dias }} dia{{ 's' if dias != 1 }}</span>
+          {% elif dias >= 5 %}
+            <span class="dias-badge dias-alerta">{{ dias }} dia{{ 's' if dias != 1 }}</span>
+          {% elif dias >= 3 %}
+            <span class="dias-badge dias-aviso">{{ dias }} dia{{ 's' if dias != 1 }}</span>
+          {% else %}
+            <span class="dias-badge dias-ok">{{ dias }} dia{{ 's' if dias != 1 }}</span>
+          {% endif %}
         </div>
-        <div class="ops-item-sub">
+        <div class="ops-item-sub" data-rua="{{ p.obra_rua }}" data-num="{{ p.obra_numero }}" data-bairro="{{ p.obra_bairro }}">
           {{ p.obra_rua }}{% if p.obra_quadra %}, Q.{{ p.obra_quadra }}{% endif %}{% if p.obra_numero %}, nº {{ p.obra_numero }}{% endif %}
           {% if p.obra_bairro %} — {{ p.obra_bairro }}{% endif %}
           <br>Retirada prevista: <strong>{{ p.data_fim_prevista }}</strong>
-          · Motor.: {{ p.motorista_entrega or '—' }}
+          · Entregue por: {{ p.motorista_entrega or '—' }}
         </div>
         <div class="ops-item-actions">
+          <!-- Retirada normal -->
           <form class="form-retirada" method="post" action="{{ url_for('pedido_finalizar', pid=p.id) }}">
             <select name="motorista_retirada" required>
               <option value="">Motorista retirada</option>
               {% for m in motoristas %}<option>{{ m }}</option>{% endfor %}
             </select>
-            <input type="date" name="data_retirada" required max="{{ hoje }}">
+            <input type="date" name="data_retirada" value="{{ hoje }}" max="{{ hoje }}" required>
             <button class="btn btn-alerta btn-sm">↩ Registrar retirada</button>
           </form>
-          <form class="inline-form" method="post" action="{{ url_for('pedido_cancelar', pid=p.id) }}"
-                onsubmit="return confirm('Cancelar pedido e liberar a caçamba?')">
-            <button class="btn btn-sec btn-sm">❌ Cancelar pedido</button>
-          </form>
+          <!-- Trocar caçamba -->
+          <details class="troca-details">
+            <summary class="btn btn-sm" style="cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:.3rem">🔄 Trocar caçamba</summary>
+            <form class="form-troca" method="post" action="{{ url_for('pedido_trocar', pid=p.id) }}" style="margin-top:.5rem;display:flex;gap:.4rem;flex-wrap:wrap">
+              <select name="cacamba_id" required class="select-cacamba" data-cap="{{ p.capacidade_m3 }}">
+                <option value="">Caçamba nova…</option>
+              </select>
+              <select name="motorista_retirada" required>
+                <option value="">Motorista</option>
+                {% for m in motoristas %}<option>{{ m }}</option>{% endfor %}
+              </select>
+              <button class="btn btn-ok btn-sm" onclick="return confirm('Trocar caçamba? O pedido atual será finalizado e um novo será criado automaticamente.')">✓ Confirmar troca</button>
+            </form>
+          </details>
+          <!-- Comprovante -->
+          <button class="btn btn-sm btn-sec" onclick="gerarComprovante({{ p.id }})">📄 Comprovante</button>
+          <!-- Pagar / Cancelar -->
           {% if not p.pago %}
           <form class="inline-form" method="post" action="{{ url_for('pedido_pagar', pid=p.id) }}">
             <input type="hidden" name="origem" value="operacoes">
             <button class="btn-pagar">✓ Marcar pago</button>
           </form>
           {% else %}<span class="badge-pago">✓ Pago</span>{% endif %}
+          <form class="inline-form" method="post" action="{{ url_for('pedido_cancelar', pid=p.id) }}"
+                onsubmit="return confirm('Cancelar pedido e liberar a caçamba?')">
+            <button class="btn btn-sec btn-sm">❌ Cancelar</button>
+          </form>
         </div>
       </div>
       {% endfor %}
     {% else %}
       <div class="empty-state" style="padding:1.5rem">Nenhuma caçamba em campo.</div>
     {% endif %}
+  </div>
+</div>
+
+<!-- Modal comprovante -->
+<div id="modal-comprovante" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:var(--surface-color);border-radius:12px;padding:1.5rem;max-width:480px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.25)">
+    <h3 style="margin:0 0 1rem">📄 Comprovante de Entrega</h3>
+    <textarea id="comprovante-texto" rows="14" style="width:100%;font-family:monospace;font-size:.82rem;border:1px solid var(--line);border-radius:6px;padding:.75rem;background:var(--surface-soft);color:var(--text-color);resize:none"></textarea>
+    <div style="display:flex;gap:.5rem;margin-top:.75rem;flex-wrap:wrap">
+      <button class="btn btn-ok" onclick="copiarComprovante()">📋 Copiar texto</button>
+      <button class="btn" id="btn-whatsapp" onclick="abrirWhatsapp()">💬 Enviar WhatsApp</button>
+      <button class="btn btn-sec" onclick="document.getElementById('modal-comprovante').style.display='none'">Fechar</button>
+    </div>
   </div>
 </div>
 
@@ -121,6 +179,33 @@ document.querySelectorAll('.select-cacamba').forEach(function(sel){
         ? '<option value="">Escolha</option>'+data.map(c=>'<option value="'+c.id+'">Nº '+c.codigo+' ('+c.capacidade_m3+'m³)</option>').join('')
         : '<option value="">Sem disponível ('+sel.dataset.cap+'m³)</option>';
     }).catch(()=>{ sel.innerHTML='<option value="">Erro</option>'; });
+});
+
+var _comprovanteWaFone = '';
+function gerarComprovante(pid) {
+  fetch('/pedidos/'+pid+'/comprovante')
+    .then(r=>r.json()).then(function(d){
+      document.getElementById('comprovante-texto').value = d.texto;
+      _comprovanteWaFone = (d.telefone||'').replace(/\D/g,'');
+      var modal = document.getElementById('modal-comprovante');
+      modal.style.display = 'flex';
+    }).catch(function(){ alert('Erro ao gerar comprovante.'); });
+}
+function copiarComprovante() {
+  var ta = document.getElementById('comprovante-texto');
+  ta.select();
+  document.execCommand('copy');
+  alert('Texto copiado!');
+}
+function abrirWhatsapp() {
+  var texto = encodeURIComponent(document.getElementById('comprovante-texto').value);
+  var fone  = _comprovanteWaFone ? '55'+_comprovanteWaFone : '';
+  var url   = fone ? 'https://wa.me/'+fone+'?text='+texto : 'https://wa.me/?text='+texto;
+  window.open(url, '_blank');
+}
+// Fechar modal ao clicar fora
+document.getElementById('modal-comprovante').addEventListener('click', function(e){
+  if(e.target===this) this.style.display='none';
 });
 </script>
 {% endblock %}

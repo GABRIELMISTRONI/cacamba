@@ -5,6 +5,7 @@ Execute:  pip install -r requirements.txt
 Acesse:   http://127.0.0.1:5000
 """
 import json
+import os
 import sqlite3
 from datetime import date, datetime, timedelta
 
@@ -15,7 +16,7 @@ from geocode import geocodificar_obra, geocodificar_obra_bauru
 
 app = Flask(__name__)
 
-app.secret_key = "cacambas-bauru-2024-prod"
+app.secret_key = os.environ.get("SECRET_KEY", "cacambas-bauru-2024-prod-dev-only")
 
 BAURU_LAT = -22.3145
 BAURU_LON = -49.0643
@@ -131,11 +132,22 @@ def _get_motoristas():
 @app.context_processor
 def inject_global_context():
     cfg = _get_config()
+    try:
+        conn = get_conn()
+        hoje_iso = date.today().isoformat()
+        vencidas  = conn.execute("SELECT COUNT(*) FROM pedidos WHERE status='no_endereco' AND data_fim_prevista < ?", (hoje_iso,)).fetchone()[0]
+        pendentes = conn.execute("SELECT COUNT(*) FROM pedidos WHERE status='pendente'").fetchone()[0]
+        confirmar = conn.execute("SELECT COUNT(*) FROM pedidos WHERE status='confirmado'").fetchone()[0]
+        conn.close()
+        stats_sidebar = {"vencidas": vencidas, "pendentes": pendentes, "confirmar": confirmar}
+    except Exception:
+        stats_sidebar = {"vencidas": 0, "pendentes": 0, "confirmar": 0}
     return {
         "empresa_nome": cfg.get("empresa_nome", "Caçambas Bauru"),
         "empresa_fone": cfg.get("empresa_fone", ""),
         "dias_locacao": _dias_locacao(cfg),
         "motoristas": _get_motoristas(),
+        "stats_sidebar": stats_sidebar,
     }
 
 
@@ -154,10 +166,16 @@ def index():
            FROM pedidos p JOIN clientes c ON c.id=p.cliente_id
            ORDER BY p.id DESC LIMIT 10"""
     ).fetchall()
+    hoje = date.today()
+    amanha_iso = (hoje + timedelta(days=1)).isoformat()
+    vencendo_amanha = conn.execute(
+        "SELECT COUNT(*) FROM pedidos WHERE status='no_endereco' AND data_fim_prevista=?",
+        (amanha_iso,)
+    ).fetchone()[0]
     conn.close()
     return render_template("index.html",
         stats=_stats(), ultimos=ultimos,
-        hoje=date.today().isoformat())
+        hoje=hoje.isoformat(), vencendo_amanha=vencendo_amanha)
 
 
 # ╔════════════════════════════════════════════════════════╗
@@ -169,18 +187,28 @@ def clientes():
     busca = request.args.get("busca", "").strip()
     conn = get_conn()
     like = f"%{busca}%"
+    # Normaliza busca: remove acentos para NORM(), e strip prefix Q./Quadra para quadra
+    import re as _re, unicodedata as _ud
+    def _norm(s): return _ud.normalize("NFD", str(s)).encode("ascii","ignore").decode("ascii").lower()
+    busca_norm = _norm(busca)
+    norm_like = f"%{busca_norm}%"
+    busca_quadra = _re.sub(r"(?i)^(quadra\s+|q\.?\s*)", "", busca).strip()
+    like_quadra = f"%{busca_quadra}%" if busca_quadra else like
     if busca:
+        # Busca nos campos principais do cliente (com NORM para acentos)
         rows = conn.execute(
             """SELECT id,tipo_pessoa,nome,cpf,cnpj,razao_social,telefone,email,rua,numero
                FROM clientes
-               WHERE nome LIKE ? OR cpf LIKE ? OR cnpj LIKE ? OR razao_social LIKE ?
-                  OR rua LIKE ? OR telefone LIKE ?
+               WHERE NORM(nome) LIKE ? OR cpf LIKE ? OR cnpj LIKE ? OR NORM(razao_social) LIKE ?
+                  OR NORM(rua) LIKE ? OR telefone LIKE ? OR NORM(email) LIKE ?
                ORDER BY nome""",
-            (like, like, like, like, like, like),
+            (norm_like, like, like, norm_like, norm_like, like, norm_like),
         ).fetchall()
+        # Busca nos endereços secundários: rua, quadra (normalizada), bairro e apelido
         ids_end = [r[0] for r in conn.execute(
-            "SELECT DISTINCT cliente_id FROM enderecos_cliente WHERE rua LIKE ? OR bairro LIKE ?",
-            (like, like),
+            """SELECT DISTINCT cliente_id FROM enderecos_cliente
+               WHERE NORM(rua) LIKE ? OR NORM(bairro) LIKE ? OR quadra LIKE ? OR NORM(apelido) LIKE ?""",
+            (norm_like, norm_like, like_quadra, norm_like),
         ).fetchall()]
         existentes = {r["id"] for r in rows}
         if ids_end:
@@ -199,8 +227,54 @@ def clientes():
     counts = {r[0]: r[1] for r in conn.execute(
         "SELECT cliente_id, COUNT(*) FROM pedidos GROUP BY cliente_id"
     ).fetchall()}
+    # Carrega todos os enderecos_cliente para exibir na listagem (rua, quadra, bairro)
+    all_ids = [r["id"] for r in rows]
+    enderecos_map = {}
+    if all_ids:
+        ph = ','.join('?' for _ in all_ids)
+        for e in conn.execute(
+            f"SELECT cliente_id,apelido,rua,quadra,numero,bairro FROM enderecos_cliente"
+            f" WHERE cliente_id IN ({ph}) ORDER BY id",
+            all_ids,
+        ).fetchall():
+            enderecos_map.setdefault(e["cliente_id"], []).append(dict(e))
     conn.close()
-    return render_template("clientes.html", clientes=rows, busca=busca, counts=counts)
+    # Pré-calcula texto de busca para cada cliente (usado no dropdown JS)
+    rows_final = []
+    for r in rows:
+        d = dict(r)
+        ends = enderecos_map.get(r["id"], [])
+        ends_txt = ' '.join(
+            ' '.join(filter(None, [e.get('rua',''), e.get('quadra',''), e.get('bairro',''), e.get('apelido','')]))
+            for e in ends
+        )
+        d['busca_txt'] = ' '.join(filter(None, [
+            r['nome'], r['cpf'] or '', r['cnpj'] or '',
+            r['razao_social'] or '', r['telefone'] or '',
+            r['email'] or '', r['rua'] or '', r['numero'] or '',
+            ends_txt
+        ]))
+        # Endereço completo para mostrar no dropdown (principal + secundários)
+        # Monta endereços completos para o dropdown (usa enderecos_cliente que tem quadra)
+        end_parts = []
+        if ends:
+            # Usa enderecos_cliente (mais completo — tem quadra e bairro)
+            for e in ends:
+                p = e.get('rua','')
+                if e.get('quadra'): p += ', Q.' + e['quadra']
+                if e.get('numero'): p += ', nº ' + e['numero']
+                if e.get('bairro'): p += ' — ' + e['bairro']
+                lbl = ('[' + e['apelido'] + '] ') if e.get('apelido') else ''
+                if p.strip(): end_parts.append(lbl + p)
+        elif r['rua']:
+            # Fallback: endereço do cadastro principal (sem quadra)
+            p = r['rua']
+            if r['numero']: p += ', nº ' + r['numero']
+            end_parts.append(p)
+        d['end_full'] = ' | '.join(end_parts)
+        rows_final.append(d)
+    return render_template("clientes.html", clientes=rows_final, busca=busca,
+                           counts=counts, enderecos_map=enderecos_map)
 
 
 @app.route("/clientes/novo", methods=["GET","POST"])
@@ -237,6 +311,19 @@ def cliente_novo():
         cnpj_s = _digits(cnpj) if tipo == "pj" else ""
 
         conn = get_conn()
+        # Bloquear duplicatas de CPF/CNPJ
+        if cpf_s:
+            dup = conn.execute("SELECT id,nome FROM clientes WHERE cpf=? AND cpf!=''", (cpf_s,)).fetchone()
+            if dup:
+                conn.close()
+                flash(f"CPF já cadastrado para o cliente: {dup['nome']}.", "erro")
+                return render_template("cliente_novo.html")
+        if cnpj_s:
+            dup = conn.execute("SELECT id,nome FROM clientes WHERE cnpj=? AND cnpj!=''", (cnpj_s,)).fetchone()
+            if dup:
+                conn.close()
+                flash(f"CNPJ já cadastrado para o cliente: {dup['nome']}.", "erro")
+                return render_template("cliente_novo.html")
         conn.execute(
             """INSERT INTO clientes
                (tipo_pessoa,nome,cpf,cnpj,razao_social,telefone,email,
@@ -322,12 +409,25 @@ def cliente_editar(cid):
             conn.close()
             return render_template("cliente_editar.html", cliente=c)
 
+        cpf_edit  = _digits(cpf)  if tipo=="pf" else ""
+        cnpj_edit = _digits(cnpj) if tipo=="pj" else ""
+        # Bloquear duplicatas (exceto o próprio cliente)
+        if cpf_edit:
+            dup = conn.execute("SELECT id,nome FROM clientes WHERE cpf=? AND cpf!='' AND id!=?", (cpf_edit, cid)).fetchone()
+            if dup:
+                conn.close()
+                flash(f"CPF já cadastrado para o cliente: {dup['nome']}.", "erro")
+                return render_template("cliente_editar.html", cliente=c)
+        if cnpj_edit:
+            dup = conn.execute("SELECT id,nome FROM clientes WHERE cnpj=? AND cnpj!='' AND id!=?", (cnpj_edit, cid)).fetchone()
+            if dup:
+                conn.close()
+                flash(f"CNPJ já cadastrado para o cliente: {dup['nome']}.", "erro")
+                return render_template("cliente_editar.html", cliente=c)
         conn.execute(
             """UPDATE clientes SET tipo_pessoa=?,nome=?,cpf=?,cnpj=?,razao_social=?,
                telefone=?,email=?,cep=?,rua=?,numero=?,complemento=? WHERE id=?""",
-            (tipo,nome,_digits(cpf) if tipo=="pf" else "",
-             _digits(cnpj) if tipo=="pj" else "",
-             razao,tel,email,cep,rua,numero,comp,cid),
+            (tipo,nome,cpf_edit,cnpj_edit,razao,tel,email,cep,rua,numero,comp,cid),
         )
         conn.commit()
         conn.close()
@@ -485,9 +585,27 @@ def pedidos():
         where.append("p.pago=?")
         params.append(int(pg))
     if q:
+        import unicodedata as _ud2
+        def _norm2(s): return _ud2.normalize("NFD", str(s)).encode("ascii","ignore").decode("ascii").lower()
         pedido_id = int(q) if q.isdigit() else -1
-        where.append("(c.nome LIKE ? OR p.id = ? OR p.endereco_obra LIKE ? OR p.obra_rua LIKE ?)")
-        params.extend([f"%{q}%", pedido_id, f"%{q}%", f"%{q}%"])
+        tokens = [_norm2(t) for t in q.split() if t]
+
+        # Para nome: todos os tokens devem aparecer no nome
+        nome_cond   = " AND ".join(["NORM(c.nome) LIKE ?" for _ in tokens])
+        nome_params = [f"%{t}%" for t in tokens]
+
+        # Para telefone: todos os tokens
+        tel_cond    = " AND ".join(["c.telefone LIKE ?" for _ in tokens])
+        tel_params  = [f"%{t}%" for t in tokens]
+
+        # Para endereço: concatena rua+quadra+numero+bairro e cada token deve aparecer
+        end_concat  = ("NORM(COALESCE(p.obra_rua,'') || ' ' || COALESCE(p.obra_quadra,'') "
+                       "|| ' ' || COALESCE(p.obra_numero,'') || ' ' || COALESCE(p.obra_bairro,''))")
+        end_cond    = " AND ".join([f"{end_concat} LIKE ?" for _ in tokens])
+        end_params  = [f"%{t}%" for t in tokens]
+
+        where.append(f"(p.id = ? OR ({nome_cond}) OR ({tel_cond}) OR ({end_cond}))")
+        params.extend([pedido_id] + nome_params + tel_params + end_params)
     sql = _PEDIDO_SELECT
     if where: sql += " WHERE " + " AND ".join(where)
     sql += " ORDER BY p.id DESC"
@@ -515,12 +633,26 @@ def pedido_novo():
             flash("Cliente e tamanho são obrigatórios.","erro")
             conn.close()
             return render_template("pedido_novo.html", clientes=clientes_list, pre_cliente_id=pre)
+        if not cid.isdigit():
+            flash("Cliente inválido.","erro")
+            conn.close()
+            return render_template("pedido_novo.html", clientes=clientes_list, pre_cliente_id=pre)
         if not _cap_ok(cap):
             flash("Tamanho inválido.","erro")
             conn.close()
             return render_template("pedido_novo.html", clientes=clientes_list, pre_cliente_id=pre)
         if not end_id:
             flash("Selecione ou cadastre o endereço da obra.","erro")
+            conn.close()
+            return render_template("pedido_novo.html", clientes=clientes_list, pre_cliente_id=pre)
+        if end_id != "novo" and not end_id.isdigit():
+            flash("Endereço inválido.","erro")
+            conn.close()
+            return render_template("pedido_novo.html", clientes=clientes_list, pre_cliente_id=pre)
+        # Validate cliente exists
+        cliente_obj = conn.execute("SELECT id FROM clientes WHERE id=?", (int(cid),)).fetchone()
+        if not cliente_obj:
+            flash("Cliente não encontrado.","erro")
             conn.close()
             return render_template("pedido_novo.html", clientes=clientes_list, pre_cliente_id=pre)
 
@@ -614,7 +746,7 @@ def pedido_entregar(pid):
         conn.close()
         flash("Só é possível entregar pedidos confirmados.","erro")
         return redirect(url_for("pedidos"))
-    if not cacamba_id:
+    if not cacamba_id or not str(cacamba_id).isdigit():
         conn.close()
         flash("Selecione a caçamba.","erro")
         return redirect(url_for("pedidos"))
@@ -642,17 +774,22 @@ def pedido_entregar(pid):
     inicio = date.today()
     fim    = inicio + timedelta(days=_dias_locacao() - 1)
 
-    if ped["cacamba_id"]:
-        conn.execute("UPDATE cacambas SET status='disponivel' WHERE id=?",(ped["cacamba_id"],))
-    conn.execute("UPDATE cacambas SET status='em_uso' WHERE id=?",(int(cacamba_id),))
-    conn.execute(
-        """UPDATE pedidos SET status='no_endereco',cacamba_id=?,motorista_entrega=?,
-           data_inicio=?,data_fim_prevista=?,latitude=?,longitude=? WHERE id=?""",
-        (int(cacamba_id),motorista,inicio.isoformat(),fim.isoformat(),lat,lon,pid),
-    )
-    conn.commit()
-    conn.close()
-    flash(f"Entrega registrada por {motorista}. Retirada prevista: {fim.strftime('%d/%m/%Y')}.","ok")
+    try:
+        if ped["cacamba_id"]:
+            conn.execute("UPDATE cacambas SET status='disponivel' WHERE id=?",(ped["cacamba_id"],))
+        conn.execute("UPDATE cacambas SET status='em_uso' WHERE id=?",(int(cacamba_id),))
+        conn.execute(
+            """UPDATE pedidos SET status='no_endereco',cacamba_id=?,motorista_entrega=?,
+               data_inicio=?,data_fim_prevista=?,latitude=?,longitude=? WHERE id=?""",
+            (int(cacamba_id),motorista,inicio.isoformat(),fim.isoformat(),lat,lon,pid),
+        )
+        conn.commit()
+        flash(f"Entrega registrada por {motorista}. Retirada prevista: {fim.strftime('%d/%m/%Y')}.","ok")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao registrar entrega: {e}","erro")
+    finally:
+        conn.close()
     return redirect(request.referrer or url_for("pedidos"))
 
 
@@ -685,12 +822,17 @@ def pedido_finalizar(pid):
         conn.close()
         flash("Data inválida.","erro")
         return redirect(url_for("pedidos"))
-    if p["cacamba_id"]:
-        conn.execute("UPDATE cacambas SET status='disponivel' WHERE id=?",(p["cacamba_id"],))
-    conn.execute("UPDATE pedidos SET status='finalizado', motorista_retirada=?, data_fim_real=? WHERE id=?",(motorista_retirada, data_retirada, pid))
-    conn.commit()
-    conn.close()
-    flash("Retirada registrada. Caçamba liberada.","ok")
+    try:
+        if p["cacamba_id"]:
+            conn.execute("UPDATE cacambas SET status='disponivel' WHERE id=?",(p["cacamba_id"],))
+        conn.execute("UPDATE pedidos SET status='finalizado', motorista_retirada=?, data_fim_real=? WHERE id=?",(motorista_retirada, data_retirada, pid))
+        conn.commit()
+        flash("Retirada registrada. Caçamba liberada.","ok")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao finalizar pedido: {e}","erro")
+    finally:
+        conn.close()
     return redirect(request.referrer or url_for("pedidos"))
 
 
@@ -744,22 +886,62 @@ def pedido_observacao(pid):
 @app.route("/operacoes")
 def operacoes():
     conn = get_conn()
-    hoje_iso = date.today().isoformat()
+    hoje = date.today()
+    hoje_iso = hoje.isoformat()
+    amanha_iso = (hoje + timedelta(days=1)).isoformat()
+    filtro = request.args.get("f", "")
+
     entregas = conn.execute(
-        _PEDIDO_SELECT +
-        " WHERE p.status='confirmado' ORDER BY p.id"
+        _PEDIDO_SELECT + " WHERE p.status='confirmado' ORDER BY p.id"
     ).fetchall()
-    no_end = conn.execute(
-        _PEDIDO_SELECT +
-        " WHERE p.status='no_endereco' ORDER BY p.data_fim_prevista"
+
+    no_end_base = conn.execute(
+        _PEDIDO_SELECT + " WHERE p.status='no_endereco' ORDER BY p.data_fim_prevista"
     ).fetchall()
-    vencidas = [p for p in no_end if p["data_fim_prevista"] and p["data_fim_prevista"] < hoje_iso]
-    retiradas_hoje = [p for p in no_end if p["data_fim_prevista"] == hoje_iso]
+
+    # Calcula dias no local para cada pedido
+    def _dias_no_local(p):
+        try:
+            inicio = datetime.strptime(p["data_inicio"], "%Y-%m-%d").date()
+            return (hoje - inicio).days
+        except:
+            return 0
+
+    no_end = []
+    for p in no_end_base:
+        d = dict(p)
+        d["dias_no_local"] = _dias_no_local(p)
+        no_end.append(d)
+
+    vencidas        = [p for p in no_end if p["data_fim_prevista"] and p["data_fim_prevista"] < hoje_iso]
+    retiradas_hoje  = [p for p in no_end if p["data_fim_prevista"] == hoje_iso]
+    retiradas_ama   = [p for p in no_end if p["data_fim_prevista"] == amanha_iso]
+
+    # Aplicar filtro rápido
+    if filtro == "entregar":
+        no_end_view = []
+        entregas_view = entregas
+    elif filtro == "hoje":
+        no_end_view = retiradas_hoje
+        entregas_view = []
+    elif filtro == "atrasadas":
+        no_end_view = vencidas
+        entregas_view = []
+    elif filtro == "amanha":
+        no_end_view = retiradas_ama
+        entregas_view = []
+    else:
+        no_end_view   = no_end
+        entregas_view = entregas
+
     conn.close()
     return render_template("operacoes.html",
-        entregas=entregas, no_end=no_end, vencidas=vencidas,
-        retiradas_hoje=retiradas_hoje,
-        motoristas=_get_motoristas(), hoje=hoje_iso)
+        entregas=entregas_view, no_end=no_end_view,
+        vencidas=vencidas, retiradas_hoje=retiradas_hoje, retiradas_amanha=retiradas_ama,
+        total_no_end=len(no_end), total_entregas=len(entregas),
+        filtro=filtro,
+        motoristas=_get_motoristas(),
+        hoje=hoje_iso, amanha=amanha_iso)
 
 
 # ╔════════════════════════════════════════════════════════╗
@@ -905,7 +1087,7 @@ def reset_banco():
     if request.method == "POST":
         conn = get_conn()
         for t in ("pedidos","enderecos_cliente","clientes","cacambas","motoristas","config"):
-            conn.execute(f"DROP TABLE IF EXISTS {t}")
+            conn.execute("DROP TABLE IF EXISTS " + t)  # t is from hardcoded tuple, safe
         conn.commit()
         conn.close()
         init_db()
@@ -918,6 +1100,122 @@ def reset_banco():
 # ╔════════════════════════════════════════════════════════╗
 # ║  APIs JSON                                               ║
 # ╚══════════════════════════════════════════════════════════╝
+
+
+@app.route("/pedidos/<int:pid>/trocar", methods=["POST"])
+def pedido_trocar(pid):
+    """Finaliza a caçamba atual e abre automaticamente novo pedido no mesmo endereço."""
+    motorista  = request.form.get("motorista_retirada", "").strip()
+    cacamba_id = request.form.get("cacamba_id", "").strip()
+    motoristas = _get_motoristas()
+    conn = get_conn()
+    try:
+        p = conn.execute(
+            "SELECT * FROM pedidos WHERE id=?", (pid,)
+        ).fetchone()
+        if not p or p["status"] != "no_endereco":
+            flash("Só é possível trocar caçamba em pedidos ativos no endereço.", "erro")
+            return redirect(request.referrer or url_for("pedidos"))
+        if not motorista or motorista not in motoristas:
+            flash("Selecione o motorista.", "erro")
+            return redirect(request.referrer or url_for("pedidos"))
+        if not cacamba_id or not str(cacamba_id).isdigit():
+            flash("Selecione a caçamba substituta.", "erro")
+            return redirect(request.referrer or url_for("pedidos"))
+
+        cab_nova = conn.execute(
+            "SELECT id,capacidade_m3,status FROM cacambas WHERE id=?", (int(cacamba_id),)
+        ).fetchone()
+        if not cab_nova or cab_nova["status"] != "disponivel":
+            flash("Caçamba selecionada não está disponível.", "erro")
+            return redirect(request.referrer or url_for("pedidos"))
+        if cab_nova["capacidade_m3"] != p["capacidade_m3"]:
+            flash("Capacidade da caçamba nova não corresponde ao pedido.", "erro")
+            return redirect(request.referrer or url_for("pedidos"))
+
+        hoje = date.today()
+        fim_real = hoje.isoformat()
+        fim_prev = (hoje + timedelta(days=_dias_locacao() - 1)).isoformat()
+        agora    = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+        # Finaliza pedido atual
+        conn.execute(
+            "UPDATE cacambas SET status='disponivel' WHERE id=?", (p["cacamba_id"],)
+        )
+        conn.execute(
+            "UPDATE pedidos SET status='finalizado', motorista_retirada=?, data_fim_real=? WHERE id=?",
+            (motorista, fim_real, pid),
+        )
+        # Ocupa caçamba nova
+        conn.execute("UPDATE cacambas SET status='em_uso' WHERE id=?", (int(cacamba_id),))
+        # Cria novo pedido automaticamente
+        conn.execute(
+            """INSERT INTO pedidos
+               (cliente_id,cacamba_id,capacidade_m3,endereco_obra,
+                obra_cep,obra_rua,obra_quadra,obra_numero,obra_bairro,
+                data_inicio,data_fim_prevista,status,pago,criado_em,observacoes,
+                motorista_entrega,latitude,longitude)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,'no_endereco',0,?,?,?,?,?)""",
+            (p["cliente_id"], int(cacamba_id), p["capacidade_m3"],
+             p["endereco_obra"], p["obra_cep"], p["obra_rua"],
+             p["obra_quadra"], p["obra_numero"], p["obra_bairro"],
+             hoje.isoformat(), fim_prev, agora,
+             f"Troca da caçamba do pedido #{pid}",
+             motorista, p["latitude"], p["longitude"]),
+        )
+        novo_pid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.commit()
+        flash(f"Troca registrada! Pedido #{novo_pid} criado com a caçamba nova. Retirada prevista: {fim_prev}.", "ok")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao processar troca: {e}", "erro")
+    finally:
+        conn.close()
+    return redirect(request.referrer or url_for("operacoes"))
+
+
+@app.route("/pedidos/<int:pid>/comprovante")
+def pedido_comprovante(pid):
+    """Retorna texto formatado do comprovante para copiar/WhatsApp."""
+    conn = get_conn()
+    p = conn.execute(
+        """SELECT p.*, c.nome AS cliente_nome, c.telefone,
+                  ca.codigo AS cacamba_codigo
+           FROM pedidos p
+           JOIN clientes c ON c.id=p.cliente_id
+           LEFT JOIN cacambas ca ON ca.id=p.cacamba_id
+           WHERE p.id=?""", (pid,)
+    ).fetchone()
+    conn.close()
+    if not p:
+        return Response("Pedido não encontrado", status=404)
+    cfg = _get_config()
+    empresa = cfg.get("empresa_nome", "Caçambas Bauru")
+    fone    = cfg.get("empresa_fone", "")
+    end = p["obra_rua"] or ""
+    if p["obra_quadra"]: end += f", Q.{p['obra_quadra']}"
+    if p["obra_numero"]: end += f", nº {p['obra_numero']}"
+    if p["obra_bairro"]: end += f" — {p['obra_bairro']}"
+    if p["obra_cep"] and len(p["obra_cep"]) == 8:
+        cep = p["obra_cep"]
+        end += f"\n  CEP: {cep[:5]}-{cep[5:]}"
+    linhas = [
+        f"*{empresa}* — Comprovante de Locação",
+        f"{'─'*35}",
+        f"*Pedido:*       #{p['id']}",
+        f"*Cliente:*      {p['cliente_nome']}",
+        f"*Caçamba:*      Nº {p['cacamba_codigo'] or '(a confirmar)'} — {p['capacidade_m3']} m³",
+        f"*Endereço:*     {end}",
+        f"*Data entrega:* {p['data_inicio'] or 'na entrega'}",
+        f"*Ret. prevista:* {p['data_fim_prevista'] or '—'}",
+        f"{'─'*35}",
+    ]
+    if fone:
+        linhas.append(f"📞 {empresa}: {fone}")
+    linhas.append("Guarde este comprovante. Em caso de dúvidas, entre em contato.")
+    texto = "\n".join(linhas)
+    return Response(json.dumps({"texto": texto, "telefone": p["telefone"]}),
+                    mimetype="application/json")
 
 @app.route("/api/cacambas-disponiveis")
 def api_cacambas_disponiveis():
@@ -966,15 +1264,43 @@ def api_clientes_search():
     if q:
         like = f"%{q}%"
         rows = conn.execute(
-            """SELECT id, nome FROM clientes
-               WHERE nome LIKE ? OR cpf LIKE ? OR cnpj LIKE ?
+            """SELECT id, nome, cpf, cnpj, tipo_pessoa, telefone
+               FROM clientes
+               WHERE nome LIKE ? OR cpf LIKE ? OR cnpj LIKE ? OR telefone LIKE ?
                ORDER BY nome LIMIT 20""",
-            (like, like, like)
+            (like, like, like, like)
         ).fetchall()
     else:
-        rows = conn.execute("SELECT id, nome FROM clientes ORDER BY nome LIMIT 20").fetchall()
+        rows = conn.execute(
+            "SELECT id, nome, cpf, cnpj, tipo_pessoa, telefone FROM clientes ORDER BY nome LIMIT 20"
+        ).fetchall()
+    results = []
+    for r in rows:
+        # Buscar primeiro endereço do cliente
+        end = conn.execute(
+            "SELECT rua, numero, bairro FROM enderecos_cliente WHERE cliente_id=? ORDER BY id LIMIT 1",
+            (r["id"],)
+        ).fetchone()
+        doc = ""
+        if r["tipo_pessoa"] == "pf" and r["cpf"] and len(r["cpf"]) == 11:
+            c = r["cpf"]
+            doc = f"{c[0:3]}.{c[3:6]}.{c[6:9]}-{c[9:11]}"
+        elif r["tipo_pessoa"] == "pj" and r["cnpj"] and len(r["cnpj"]) == 14:
+            c = r["cnpj"]
+            doc = f"{c[0:2]}.{c[2:5]}.{c[5:8]}/{c[8:12]}-{c[12:14]}"
+        endereco_str = ""
+        if end:
+            endereco_str = end["rua"]
+            if end["numero"]: endereco_str += f", {end['numero']}"
+            if end["bairro"]:  endereco_str += f" — {end['bairro']}"
+        results.append({
+            "id": r["id"],
+            "text": r["nome"],
+            "doc": doc,
+            "endereco": endereco_str,
+            "telefone": r["telefone"] or "",
+        })
     conn.close()
-    results = [{"id": r["id"], "text": r["nome"]} for r in rows]
     return Response(json.dumps(results), mimetype="application/json")
 
 
@@ -985,3 +1311,48 @@ def api_stats():
 
 if __name__ == "__main__":
     app.run()
+
+@app.route("/api/pedidos/enderecos")
+def api_pedidos_enderecos():
+    """Autocomplete de endereços de obra dos pedidos."""
+    import unicodedata as _ud3
+    def _norm3(s):
+        return _ud3.normalize("NFD", str(s)).encode("ascii","ignore").decode("ascii").lower()
+
+    q = request.args.get("q", "").strip()
+    conn = get_conn()
+
+    rows = conn.execute(
+        "SELECT DISTINCT obra_rua, obra_quadra, obra_numero, obra_bairro "
+        "FROM pedidos WHERE obra_rua IS NOT NULL AND obra_rua != '' "
+        "ORDER BY obra_rua, obra_quadra, obra_numero"
+    ).fetchall()
+    conn.close()
+
+    results = []
+    seen = set()
+    tokens = [_norm3(t) for t in q.split() if t] if q else []
+
+    for r in rows:
+        rua    = (r["obra_rua"]    or "").strip()
+        quadra = (r["obra_quadra"] or "").strip()
+        numero = (r["obra_numero"] or "").strip()
+        bairro = (r["obra_bairro"] or "").strip()
+
+        campo_busca = _norm3(f"{rua} {quadra} {numero} {bairro}")
+
+        if tokens and not all(t in campo_busca for t in tokens):
+            continue
+
+        label = rua
+        if quadra: label += f", Q.{quadra}"
+        if numero: label += f", nº {numero}"
+        if bairro: label += f" — {bairro}"
+
+        if label not in seen:
+            seen.add(label)
+            results.append({"label": label, "rua": rua, "quadra": quadra, "numero": numero, "bairro": bairro})
+        if len(results) >= 10:
+            break
+
+    return Response(json.dumps(results), mimetype="application/json")

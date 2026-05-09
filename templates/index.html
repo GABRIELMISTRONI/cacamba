@@ -16,6 +16,21 @@
   </div>
 </div>
 
+{% if stats.retiradas_vencidas or vencendo_amanha %}
+<div class="alertas-banner">
+  {% if stats.retiradas_vencidas %}
+  <a href="{{ url_for('operacoes', f='atrasadas') }}" class="alerta-item alerta-danger">
+    ⚠ {{ stats.retiradas_vencidas }} caçamba(s) com prazo <strong>vencido</strong> — clique para ver
+  </a>
+  {% endif %}
+  {% if vencendo_amanha %}
+  <a href="{{ url_for('operacoes', f='amanha') }}" class="alerta-item alerta-warn">
+    🔔 {{ vencendo_amanha }} caçamba(s) vencem <strong>amanhã</strong> — planejar retirada
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+
 <div class="stats-grid">
   <div class="stat-card verde">
     <div class="stat-num">{{ stats.disponiveis }}</div>

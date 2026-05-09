@@ -1,14 +1,22 @@
 # -*- coding: utf-8 -*-
 import sqlite3
+import unicodedata
 from pathlib import Path
 
 DB_PATH = Path(__file__).resolve().parent / "cacambas.db"
 CAPACIDADES_M3 = (3, 4)
 VALORES_LOCACAO = {3: 300.00, 4: 330.00}  # Valores por m³
 
+def _norm(s):
+    """Remove acentos e converte para minúsculas — usado na função SQL NORM()."""
+    if s is None:
+        return ""
+    return unicodedata.normalize("NFD", str(s)).encode("ascii", "ignore").decode("ascii").lower()
+
 def get_conn():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.create_function("NORM", 1, _norm)
     return conn
 
 def init_db():

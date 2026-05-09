@@ -642,11 +642,12 @@ textarea {
 .busca-inline {
   flex: 1; 
   min-width: 200px; 
-  max-width: 300px;
-  padding: .45rem .9rem; 
+  max-width: 320px;
+  padding: .45rem .9rem .45rem 2.2rem; 
   border: 1.5px solid var(--line);
   border-radius: 24px; 
   font-size: .9rem;
+  background: var(--surface-color) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='8' stroke='%237a6f67' stroke-width='2'/%3E%3Cpath d='m21 21-4.35-4.35' stroke='%237a6f67' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat .75rem center;
   transition: var(--transition);
 }
 .busca-inline:focus { 
@@ -743,6 +744,7 @@ textarea {
 }
 .badge-pf { background:#e8f4fd; color:#1e5f99; }
 .badge-pj { background:#fef3e2; color:#a05e00; }
+.badge-count { display:inline-block; padding:.15rem .5rem; border-radius:999px; font-size:.75rem; font-weight:700; background:var(--brand); color:#fff; }
 
 /* ── Botão pagar ─────────────────────────────────────── */
 .btn-pagar { 
@@ -773,11 +775,13 @@ textarea {
 .btn-icon-danger:hover { background:rgba(180,35,24,.15); }
 
 /* ── Busca card ──────────────────────────────────────── */
-.busca-card { padding:.8rem 1.2rem; }
+.busca-card { padding:.9rem 1.2rem; }
 .busca-form { display:flex; gap:.7rem; align-items:center; flex-wrap:wrap; }
 .busca-input { 
-  flex:1; min-width:220px; padding:.5rem .9rem; 
+  flex:1; min-width:240px; padding:.55rem 1rem .55rem 2.6rem; 
   border:1.5px solid var(--line); border-radius:var(--radius-sm); font-size:.95rem;
+  background: var(--surface-color) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='8' stroke='%237a6f67' stroke-width='2'/%3E%3Cpath d='m21 21-4.35-4.35' stroke='%237a6f67' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat .8rem center;
+  transition: var(--transition);
 }
 .busca-input:focus { 
   outline:none; border-color:var(--brand); 
@@ -798,19 +802,39 @@ textarea {
 
 /* ── Endereços ───────────────────────────────────────── */
 .enderecos-lista { 
-  display:flex; flex-direction:column; gap:.6rem; margin-top:.9rem;
+  display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap:.75rem; margin-top:.9rem;
 }
 .endereco-item { 
   display:flex; align-items:flex-start; justify-content:space-between; 
-  gap:1.2rem; padding:.8rem 1.1rem; 
-  background:var(--surface-soft); border:1px solid var(--line); 
-  border-radius:10px; transition:var(--transition);
+  gap:1rem; padding:1rem 1.1rem; 
+  background:var(--surface-color); border:1.5px solid var(--line); 
+  border-radius:12px; transition:var(--transition);
+  position:relative; overflow:hidden;
 }
-.endereco-item:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
-.endereco-info { display:flex; flex-direction:column; gap:.2rem; font-size:.95rem; }
+.endereco-item::before {
+  content:''; position:absolute; left:0; top:0; bottom:0; width:4px;
+  background:linear-gradient(180deg, var(--brand), var(--brand-dark));
+  border-radius:4px 0 0 4px;
+}
+.endereco-item:hover { 
+  box-shadow: var(--shadow-md); transform: translateY(-2px);
+  border-color: var(--brand);
+}
+.endereco-info { display:flex; flex-direction:column; gap:.25rem; font-size:.93rem; flex:1; }
 .end-apelido   { 
-  color:var(--brand); font-size:.82rem; font-weight:800; 
-  text-transform:uppercase; letter-spacing:.04em;
+  color:var(--brand); font-size:.78rem; font-weight:800; 
+  text-transform:uppercase; letter-spacing:.06em;
+  display:flex; align-items:center; gap:.3rem;
+}
+.end-apelido::before { content:'📍'; font-size:.85em; }
+.end-rua { font-weight:600; color:var(--text); }
+.end-quadra-badge {
+  display:inline-flex; align-items:center; gap:.2rem;
+  background:var(--brand-light); color:var(--brand-dark);
+  font-size:.72rem; font-weight:700; padding:.1rem .45rem;
+  border-radius:6px; border:1px solid rgba(201,93,26,.2);
+  margin-top:.1rem; width:fit-content;
 }
 .form-inline-box { 
   margin:.8rem 0; padding:1rem 1.2rem; 
@@ -1077,3 +1101,449 @@ body.dark .loading-overlay { background: rgba(18,18,18,.85); }
 /* ── Config grid ─────────────────────────────────────── */
 .config-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:1.2rem; }
 @media(max-width:700px){ .config-grid{grid-template-columns:1fr} }
+
+/* ══════════════════════════════════════════════════════════
+   BADGES DE DIAS NO LOCAL
+══════════════════════════════════════════════════════════ */
+.dias-badge {
+  display: inline-block;
+  padding: .15rem .55rem;
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  margin-left: .35rem;
+}
+.dias-ok      { background: #dcfce7; color: #15803d; }
+.dias-aviso   { background: #fef9c3; color: #a16207; }
+.dias-alerta  { background: #ffedd5; color: #c2410c; }
+.dias-vencido { background: #fee2e2; color: #b91c1c; }
+.dias-neutro  { background: var(--surface-soft); color: var(--text-muted, #888); }
+
+/* Badge amanhã */
+.badge-amanha {
+  display: inline-block;
+  padding: .18rem .55rem;
+  border-radius: 6px;
+  font-size: .72rem;
+  font-weight: 800;
+  background: #fef3c7;
+  color: #92400e;
+  margin-right: .3rem;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ALERTAS DO DASHBOARD
+══════════════════════════════════════════════════════════ */
+.alertas-banner {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  margin-bottom: 1rem;
+}
+.alerta-item {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .75rem 1rem;
+  border-radius: 8px;
+  font-size: .9rem;
+  text-decoration: none;
+  font-weight: 500;
+  transition: filter .15s;
+}
+.alerta-item:hover { filter: brightness(.95); }
+.alerta-danger { background: #fee2e2; color: #b91c1c; border-left: 4px solid #ef4444; }
+.alerta-warn   { background: #fef9c3; color: #92400e; border-left: 4px solid #f59e0b; }
+
+/* ══════════════════════════════════════════════════════════
+   TROCAR CAÇAMBA (details/summary)
+══════════════════════════════════════════════════════════ */
+.troca-details { display: inline-block; }
+.troca-details summary::-webkit-details-marker { display: none; }
+.troca-details[open] summary { background: var(--brand); color: #fff; border-color: var(--brand); }
+.form-troca select, .form-troca input { font-size: .82rem; }
+
+/* ══════════════════════════════════════════════════════════
+   MELHORIAS VISUAIS v5 — Busca avançada + Quadra
+══════════════════════════════════════════════════════════ */
+
+/* Tag de quadra nos pedidos da listagem */
+.quadra-tag {
+  display: inline-flex; align-items: center; gap: .2rem;
+  background: rgba(201,93,26,.08); color: var(--brand-dark);
+  font-size: .72rem; font-weight: 700; padding: .1rem .4rem;
+  border-radius: 6px; border: 1px solid rgba(201,93,26,.18);
+  white-space: nowrap;
+}
+
+/* Hint de busca abaixo da tabela */
+.busca-hint {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .65rem 1.1rem;
+  background: var(--brand-light);
+  border-top: 1px solid rgba(201,93,26,.15);
+  font-size: .85rem; color: var(--brand-dark);
+}
+.busca-hint strong { color: var(--brand); }
+
+/* end-rua na listagem de clientes */
+.end-rua { font-weight: 500; }
+
+/* Card de busca com bordas mais definidas */
+.busca-card {
+  border-left: 4px solid var(--brand) !important;
+}
+
+/* Melhorias no form-inline-box de endereços */
+.form-inline-box {
+  margin: .8rem 0; padding: 1.1rem 1.3rem;
+  background: var(--surface-soft); 
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  border-left: 4px solid var(--brand-2);
+}
+
+/* Highlight da quadra no formulário de novo endereço */
+input[name="quadra"] {
+  border-color: var(--brand-2) !important;
+}
+input[name="quadra"]:focus {
+  box-shadow: 0 0 0 3px rgba(32,99,155,.12) !important;
+}
+
+/* Badge de status de busca nos resultados */
+.resultado-busca-info {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .6rem 1rem;
+  background: linear-gradient(90deg, var(--brand-light), transparent);
+  border-bottom: 1px solid rgba(201,93,26,.12);
+  font-size: .83rem; color: var(--brand-dark); font-weight: 500;
+}
+.resultado-busca-info .busca-termo {
+  background: var(--brand); color: #fff;
+  padding: .05rem .4rem; border-radius: 6px;
+  font-size: .8rem; font-weight: 700;
+}
+
+/* Aprimoramento visual do card de endereço — botão remover */
+.btn-icon-danger {
+  flex-shrink: 0;
+  margin-top: .15rem;
+}
+
+/* ── Coluna endereços na listagem de clientes ─────────── */
+.cel-enderecos {
+  font-size: .88rem;
+  line-height: 1.5;
+}
+.end-linha-principal {
+  margin-bottom: .15rem;
+}
+.end-linha-sec {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: .25rem;
+  padding: .12rem 0;
+  border-top: 1px dashed var(--line);
+}
+.end-linha-sec:first-child { border-top: none; }
+.end-rua-sec {
+  font-size: .85rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .2rem;
+}
+.bairro-txt {
+  font-style: normal;
+  color: var(--muted);
+  font-size: .82rem;
+}
+.end-apelido-mini {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--brand);
+  background: var(--brand-light);
+  padding: .05rem .35rem;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+/* quadra-tag inline (pequena) */
+.quadra-tag {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(201,93,26,.1);
+  color: var(--brand-dark);
+  font-size: .72rem;
+  font-weight: 800;
+  padding: .05rem .35rem;
+  border-radius: 5px;
+  border: 1px solid rgba(201,93,26,.2);
+  white-space: nowrap;
+}
+
+/* ── Autocomplete dropdown busca pedidos ─────────────────────── */
+.busca-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface-color);
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.13);
+  list-style: none;
+  margin: 0;
+  padding: .3rem 0;
+  z-index: 500;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.busca-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .55rem 1rem;
+  font-size: .88rem;
+  cursor: pointer;
+  color: var(--text-color);
+  transition: background .12s;
+  border-radius: 8px;
+  margin: .15rem .3rem;
+}
+
+.busca-dropdown-item:hover,
+.busca-dropdown-item.ativo {
+  background: var(--surface-soft);
+  color: var(--brand);
+}
+
+.busca-dropdown-item .dd-icon {
+  font-size: .9rem;
+  flex-shrink: 0;
+}
+
+.busca-dropdown-item strong {
+  color: var(--brand);
+  font-weight: 700;
+}
+
+
+/* ══════════════════════════════════════════════════════════
+   MELHORIAS VISUAIS v6 — Rápidas mas que fazem diferença
+══════════════════════════════════════════════════════════ */
+
+/* ── 1. Sidebar: badge de contagem ao vivo nos nav items ── */
+.nav-badge {
+  margin-left: auto;
+  background: var(--brand);
+  color: #fff;
+  font-size: .65rem;
+  font-weight: 800;
+  padding: .12rem .45rem;
+  border-radius: 20px;
+  min-width: 20px;
+  text-align: center;
+  line-height: 1.4;
+  animation: pulse-badge 2s ease infinite;
+}
+.nav-badge.danger { background: var(--danger); }
+.nav-badge.warn   { background: var(--warning); }
+@keyframes pulse-badge {
+  0%,100% { transform: scale(1); }
+  50%      { transform: scale(1.08); }
+}
+
+/* ── 2. Topbar: sombra e gradiente ao scroll ─────────────── */
+.topbar.scrolled {
+  box-shadow: 0 4px 20px rgba(0,0,0,.12);
+  border-bottom-color: transparent;
+}
+
+/* ── 3. Stat cards: hover com micro-animação do número ───── */
+.stat-card .stat-num {
+  transition: transform .2s ease, color .2s ease;
+}
+.stat-card:hover .stat-num {
+  transform: scale(1.08);
+}
+
+/* ── 4. Status chips: ícone automático ───────────────────── */
+.status-pendente::before    { content: '⏳ '; }
+.status-confirmado::before  { content: '✅ '; }
+.status-no_endereco::before { content: '📦 '; }
+.status-finalizado::before  { content: '🏁 '; }
+.status-disponivel::before  { content: '✅ '; }
+.status-em_uso::before      { content: '⚙️ '; }
+.status-manutencao::before  { content: '🔧 '; }
+
+/* ── 5. Tabela: linhas alternadas suaves ─────────────────── */
+.tabela-dados tbody tr:nth-child(even) {
+  background: rgba(248,245,242,.6);
+}
+body.dark .tabela-dados tbody tr:nth-child(even) {
+  background: rgba(255,255,255,.02);
+}
+
+/* ── 6. Cards de operação: barra lateral colorida por urgência */
+.ops-item { border-left: 4px solid transparent; }
+.ops-item:not(.ops-item-vencida):not(.ops-item-hoje) {
+  border-left-color: var(--line);
+}
+/* Efeito hover mais rico */
+.ops-item:hover {
+  border-left-color: var(--brand);
+  background: var(--surface-color);
+}
+
+/* ── 7. Botões: feedback visual de loading ao clicar ──────── */
+.btn:active { transform: scale(.97); }
+form button[type=submit]:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* ── 8. Flash messages: auto-dismiss animation ────────────── */
+.flash {
+  animation: slideIn .4s ease, fadeOut .4s ease 5s forwards;
+}
+@keyframes fadeOut {
+  from { opacity: 1; max-height: 100px; margin-bottom: .6rem; }
+  to   { opacity: 0; max-height: 0; margin-bottom: 0; padding: 0; overflow: hidden; }
+}
+
+/* ── 9. Formulários: label focus highlight ───────────────── */
+.form-group:focus-within > label {
+  color: var(--brand);
+}
+.form-group { position: relative; }
+
+/* ── 10. Tooltips simples via data-tip ───────────────────── */
+[data-tip] { position: relative; cursor: help; }
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 6px); left: 50%;
+  transform: translateX(-50%);
+  background: #1a1613; color: #fff;
+  font-size: .75rem; font-weight: 500;
+  padding: .3rem .65rem; border-radius: 6px;
+  white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity .15s;
+  z-index: 999;
+}
+[data-tip]:hover::after { opacity: 1; }
+
+/* ── 11. Skeleton loader para tabelas ────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-soft) 25%, var(--surface-mid) 50%, var(--surface-soft) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+  height: 14px;
+  display: inline-block;
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+/* ── 12. Progresso de dias: barra visual ─────────────────── */
+.dias-progress {
+  display: flex; align-items: center; gap: .4rem; margin-top: .3rem;
+}
+.dias-bar-wrap {
+  flex: 1; height: 4px; background: var(--surface-mid);
+  border-radius: 4px; overflow: hidden; max-width: 80px;
+}
+.dias-bar {
+  height: 100%; border-radius: 4px;
+  transition: width .3s ease;
+}
+.dias-bar.ok      { background: #22c55e; }
+.dias-bar.aviso   { background: #f59e0b; }
+.dias-bar.alerta  { background: #f97316; }
+.dias-bar.vencido { background: var(--danger); }
+
+/* ── 13. Hero banner: texto animado ──────────────────────── */
+.hero-texto h2 {
+  animation: heroSlide .6s ease;
+}
+@keyframes heroSlide {
+  from { transform: translateX(-20px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+/* ── 14. Página de clientes: avatar inicial ──────────────── */
+.cliente-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  color: #fff; font-weight: 800; font-size: .9rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-right: .5rem;
+  box-shadow: 0 2px 6px rgba(201,93,26,.3);
+}
+
+/* ── 15. Empty states melhorados ─────────────────────────── */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  gap: .75rem; padding: 3.5rem 1.5rem;
+}
+.empty-state .empty-icon {
+  font-size: 2.5rem; opacity: .4;
+  animation: float 3s ease infinite;
+}
+@keyframes float {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+/* ── 16. Inputs: ícone de validação ──────────────────────── */
+input:valid:not(:placeholder-shown):not([readonly]) {
+  border-color: rgba(26,127,60,.4);
+}
+input:invalid:not(:placeholder-shown) {
+  border-color: rgba(180,35,24,.4);
+}
+
+/* ── 17. Scrollbar global customizada ────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ── 18. Topbar dark mode toggle: animação ───────────────── */
+#theme-toggle { 
+  width: 36px; height: 36px; padding: 0;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--surface-soft); border: 1.5px solid var(--line);
+  box-shadow: none;
+  transition: var(--transition);
+}
+#theme-toggle:hover { 
+  background: var(--surface-mid);
+  transform: rotate(20deg) scale(1.1);
+}
+#theme-icon { font-size: 1rem; transition: transform .3s ease; }
+
+/* ── 19. Card de operação: endereço com ícone de mapa ──────── */
+.ops-item-sub .end-link {
+  color: var(--brand-2); text-decoration: none; font-size: .82rem;
+}
+.ops-item-sub .end-link:hover { text-decoration: underline; }
+
+/* ── 20. Tabela: coluna de ações sempre visível ──────────── */
+.tabela-dados th:last-child,
+.tabela-dados td:last-child { 
+  position: sticky; right: 0;
+  background: var(--surface-color);
+  box-shadow: -2px 0 8px rgba(0,0,0,.06);
+}
+.tabela-dados tbody tr:hover td:last-child {
+  background: rgba(201,93,26,.04);
+}

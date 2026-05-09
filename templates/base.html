@@ -42,11 +42,13 @@
       </a>
       <a href="{{ url_for('pedidos') }}" class="nav-item {% if request.endpoint in ['pedidos','pedido_novo'] %}active{% endif %}">
         <span class="nav-icon">📄</span><span class="nav-label">Pedidos</span>
+        {% if stats_sidebar and stats_sidebar.pendentes > 0 %}<span class="nav-badge warn">{{ stats_sidebar.pendentes }}</span>{% endif %}
       </a>
 
       <span class="nav-section">Operacional</span>
       <a href="{{ url_for('operacoes') }}" class="nav-item {% if request.endpoint == 'operacoes' %}active{% endif %}">
         <span class="nav-icon">🚚</span><span class="nav-label">Operações</span>
+        {% if stats_sidebar and stats_sidebar.vencidas > 0 %}<span class="nav-badge danger" data-tip="Caçambas atrasadas">{{ stats_sidebar.vencidas }}</span>{% elif stats_sidebar and stats_sidebar.confirmar > 0 %}<span class="nav-badge">{{ stats_sidebar.confirmar }}</span>{% endif %}
       </a>
       <a href="{{ url_for('financeiro') }}" class="nav-item {% if request.endpoint == 'financeiro' %}active{% endif %}">
         <span class="nav-icon">💰</span><span class="nav-label">Financeiro</span>
@@ -133,6 +135,36 @@
     document.getElementById('sidebar').classList.remove('open');
     document.getElementById('sidebarOverlay').classList.remove('visible');
   }
+
+  // Topbar shadow ao scroll
+  window.addEventListener('scroll', function() {
+    document.querySelector('.topbar').classList.toggle('scrolled', window.scrollY > 10);
+  });
+
+  // Auto-dismiss flash messages
+  document.querySelectorAll('.flash').forEach(function(el) {
+    setTimeout(function() {
+      el.style.transition = 'opacity .5s, max-height .5s, margin .5s, padding .5s';
+      el.style.opacity = '0';
+      el.style.maxHeight = '0';
+      el.style.margin = '0';
+      el.style.padding = '0';
+      el.style.overflow = 'hidden';
+      setTimeout(function() { el.remove(); }, 500);
+    }, 5000);
+    // Click to dismiss
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', function() {
+      el.style.transition = 'opacity .3s';
+      el.style.opacity = '0';
+      setTimeout(function() { el.remove(); }, 300);
+    });
+  });
+
+  // Abrir links externos no Maps quando endereço é clicado
+  document.querySelectorAll('.end-link').forEach(function(a) {
+    a.addEventListener('click', function(e) { e.stopPropagation(); });
+  });
   </script>
   {% block scripts %}{% endblock %}
 </body>

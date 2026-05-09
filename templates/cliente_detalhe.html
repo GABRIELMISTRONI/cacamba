@@ -107,13 +107,15 @@
     {% for e in enderecos %}
     <div class="endereco-item">
       <div class="endereco-info">
-        {% if e.apelido %}<strong class="end-apelido">📍 {{ e.apelido }}</strong>{% endif %}
-        <span>
+        {% if e.apelido %}<strong class="end-apelido">{{ e.apelido }}</strong>{% endif %}
+        <span class="end-rua">
           {{ e.rua }}
-          {%- if e.quadra %}, Quadra {{ e.quadra }}{% endif %}
           {%- if e.numero %}, nº {{ e.numero }}{% endif %}
           {%- if e.bairro %} — {{ e.bairro }}{% endif %}
         </span>
+        {% if e.quadra %}
+          <span class="end-quadra-badge">🟧 Quadra {{ e.quadra }}</span>
+        {% endif %}
         {% if e.cep and e.cep|length == 8 %}<small class="muted mono">CEP {{ e.cep[0:5] }}-{{ e.cep[5:8] }}</small>{% endif %}
         {% if e.complemento %}<small class="muted">{{ e.complemento }}</small>{% endif %}
       </div>
@@ -155,7 +157,9 @@
       <tr class="{% if vencida %}linha-vencida{% endif %}">
         <td class="mono">#{{ p.id }}</td>
         <td class="cel-obra-pedido">
-          {{ p.obra_rua or p.endereco_obra or '—' }}{% if p.obra_numero %}, nº {{ p.obra_numero }}{% endif %}
+          {{ p.obra_rua or p.endereco_obra or '—' }}
+          {%- if p.obra_quadra %}, Q.{{ p.obra_quadra }}{% endif %}
+          {%- if p.obra_numero %}, nº {{ p.obra_numero }}{% endif %}
           {% if p.obra_bairro %}<br><small class="muted">{{ p.obra_bairro }}</small>{% endif %}
           {% if p.observacoes %}<br><small class="muted">Obs: {{ p.observacoes }}</small>{% endif %}
         </td>
