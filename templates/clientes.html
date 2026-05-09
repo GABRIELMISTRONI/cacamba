@@ -22,7 +22,7 @@
 <div class="card busca-card" style="padding:.85rem 1.2rem">
   <div style="position:relative" id="busca-wrap">
     <span style="position:absolute;left:.9rem;top:50%;transform:translateY(-50%);font-size:1.05rem;pointer-events:none;opacity:.45;z-index:1">🔍</span>
-    <input type="search" id="busca-live"
+    <input type="text" id="busca-live"
            value="{{ busca }}"
            placeholder="Digite nome, CPF, telefone, rua, bairro…"
            autocomplete="off"
@@ -31,15 +31,18 @@
     <button id="btn-limpar" onclick="limparBusca()" title="Limpar"
             style="display:none;position:absolute;right:.75rem;top:50%;transform:translateY(-50%);
                    background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--muted)">✕</button>
-    <ul id="dropdown" style="
-        display:none;
-        background:var(--surface-color);border:1.5px solid var(--brand);
-        border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.18);
-        list-style:none;margin:0;padding:.3rem 0;z-index:9999;
-        max-height:400px;overflow-y:auto;"></ul>
   </div>
   <div id="busca-status" style="font-size:.82rem;color:var(--muted);margin-top:.4rem;min-height:1.1em"></div>
 </div>
+
+<!-- Dropdown fora do .card para não ser cortado pelo overflow:hidden -->
+<ul id="dropdown" style="
+    display:none;
+    position:fixed;
+    background:var(--surface-color);border:1.5px solid var(--brand);
+    border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.18);
+    list-style:none;margin:0;padding:.3rem 0;z-index:9999;
+    max-height:400px;overflow-y:auto;"></ul>
 
 <!-- Tabela -->
 <div class="card table-wrap">
@@ -123,7 +126,6 @@
  "href":"{{ url_for('cliente_detalhe', cid=c.id) }}",
  "nome":{{ c.nome | tojson }},
  "doc":"{% if c.tipo_pessoa == 'pj' and c.cnpj and c.cnpj|length == 14 %}{{ c.cnpj[0:2] }}.{{ c.cnpj[2:5] }}.{{ c.cnpj[5:8] }}/{{ c.cnpj[8:12] }}-{{ c.cnpj[12:14] }}{% elif c.cpf and c.cpf|length == 11 %}{{ c.cpf[0:3] }}.{{ c.cpf[3:6] }}.{{ c.cpf[6:9] }}-{{ c.cpf[9:11] }}{% endif %}",
- "tel":{{ (c.telefone or '') | tojson }},
  "ini":{{ (c.nome[0]|upper if c.nome else '?') | tojson }},
  "busca":{{ c.busca_txt | tojson }},
  "end":{{ c.end_full | tojson }}
@@ -160,12 +162,15 @@
 
   /* ── Highlight simples no texto ──────────────────────── */
   function mark(texto, termos) {
-    var s = texto.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    // Escapa HTML primeiro
+    var s = (texto || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    // Aplica highlight usando placeholders que não conflitam com HTML
     termos.forEach(function(t) {
-      var e = t.replace(/[.*+?^${}()|[\]\]/g,'\$&');
-      s = s.replace(new RegExp('('+e+')','gi'),
-        '<mark style="background:#fff176;border-radius:2px;padding:0 1px;font-weight:800">$1</mark>');
+      var e = t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      s = s.replace(new RegExp('(' + e + ')','gi'), '[[MK]]$1[[/MK]]');
     });
+    s = s.replace(/\[\[MK\]\]/g, '<mark style="background:#fff176;border-radius:2px;padding:0 1px;font-weight:800">')
+         .replace(/\[\[\/MK\]\]/g, '</mark>');
     return s;
   }
 
@@ -211,9 +216,8 @@
       var nomeMark = mark(c._nomeOrig, termos);
       var sub = '';
       if (c.doc) sub += '<span style="white-space:nowrap">🪪 ' + mark(c.doc, termos) + '</span>';
-      if (c.tel) sub += '<span style="white-space:nowrap">📞 ' + mark(c.tel, termos) + '</span>';
       if (c.end) {
-        c.end.split('|').forEach(function(e) {
+        String(c.end).split('|').forEach(function(e) {
           var et = e.trim();
           if (et) sub += '<span>📍 ' + mark(et, termos) + '</span>';
         });

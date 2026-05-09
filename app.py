@@ -200,9 +200,9 @@ def clientes():
             """SELECT id,tipo_pessoa,nome,cpf,cnpj,razao_social,telefone,email,rua,numero
                FROM clientes
                WHERE NORM(nome) LIKE ? OR cpf LIKE ? OR cnpj LIKE ? OR NORM(razao_social) LIKE ?
-                  OR NORM(rua) LIKE ? OR telefone LIKE ? OR NORM(email) LIKE ?
+                  OR NORM(rua) LIKE ? OR NORM(email) LIKE ?
                ORDER BY nome""",
-            (norm_like, like, like, norm_like, norm_like, like, norm_like),
+            (norm_like, like, like, norm_like, norm_like, norm_like),
         ).fetchall()
         # Busca nos endereços secundários: rua, quadra (normalizada), bairro e apelido
         ids_end = [r[0] for r in conn.execute(
@@ -250,7 +250,7 @@ def clientes():
         )
         d['busca_txt'] = ' '.join(filter(None, [
             r['nome'], r['cpf'] or '', r['cnpj'] or '',
-            r['razao_social'] or '', r['telefone'] or '',
+            r['razao_social'] or '',
             r['email'] or '', r['rua'] or '', r['numero'] or '',
             ends_txt
         ]))
