@@ -1547,3 +1547,5 @@ input:invalid:not(:placeholder-shown) {
 .tabela-dados tbody tr:hover td:last-child {
   background: rgba(201,93,26,.04);
 }
+
+/* dropdown posicionado via JS com fixed + getBoundingClientRect */
