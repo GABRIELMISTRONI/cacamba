@@ -9,7 +9,9 @@
     
     function setTheme(dark) {
       document.body.classList.toggle('dark', dark);
-      themeIcon.textContent = dark ? '☀️' : '🌙';
+      themeIcon.innerHTML = dark
+        ? '<svg><use href="#i-sun"></use></svg>'
+        : '<svg><use href="#i-moon"></use></svg>';
       localStorage.setItem('theme', dark ? 'dark' : 'light');
     }
     

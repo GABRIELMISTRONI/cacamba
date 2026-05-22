@@ -60,7 +60,7 @@
     <tbody id="tbody">
       {% for c in clientes %}
       <tr class="linha-clicavel" id="row-{{ c.id }}"
-          onclick="window.location='{{ url_for('cliente_detalhe', cid=c.id) }}'">
+          data-href="{{ url_for('cliente_detalhe', cid=c.id) }}" onclick="location.href=this.dataset.href">
         <td>
           <div style="display:flex;align-items:center;gap:.5rem">
             <span class="cliente-avatar">{{ c.nome[0]|upper }}</span>

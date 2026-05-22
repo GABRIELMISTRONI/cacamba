@@ -84,23 +84,27 @@ def _geocode_ped(ped):
 
 def _stats():
     conn = get_conn()
+    hoje_iso = date.today().isoformat()
+    clientes = conn.execute("SELECT COUNT(*) FROM clientes").fetchone()[0]
+    frota = {r["status"]: r["n"] for r in conn.execute("SELECT status, COUNT(*) AS n FROM cacambas GROUP BY status").fetchall()}
+    pedidos = conn.execute(
+        """SELECT
+             SUM(CASE WHEN status IN ('pendente','confirmado','no_endereco') THEN 1 ELSE 0 END) AS pedidos_abertos,
+             SUM(CASE WHEN pago=0 AND status!='pendente' THEN 1 ELSE 0 END) AS a_receber,
+             SUM(CASE WHEN status='confirmado' THEN 1 ELSE 0 END) AS entregas_hoje,
+             SUM(CASE WHEN status='no_endereco' AND data_fim_prevista < ? THEN 1 ELSE 0 END) AS retiradas_vencidas
+           FROM pedidos""",
+        (hoje_iso,),
+    ).fetchone()
     s = {
-        "clientes":      conn.execute("SELECT COUNT(*) FROM clientes").fetchone()[0],
-        "disponiveis":   conn.execute("SELECT COUNT(*) FROM cacambas WHERE status='disponivel'").fetchone()[0],
-        "em_uso":        conn.execute("SELECT COUNT(*) FROM cacambas WHERE status='em_uso'").fetchone()[0],
-        "manutencao":    conn.execute("SELECT COUNT(*) FROM cacambas WHERE status='manutencao'").fetchone()[0],
-        "pedidos_abertos": conn.execute(
-            "SELECT COUNT(*) FROM pedidos WHERE status IN ('pendente','confirmado','no_endereco')"
-        ).fetchone()[0],
-        "a_receber":     conn.execute(
-            "SELECT COUNT(*) FROM pedidos WHERE pago=0 AND status!='pendente'"
-        ).fetchone()[0],
-        "entregas_hoje": conn.execute(
-            "SELECT COUNT(*) FROM pedidos WHERE status='confirmado'"
-        ).fetchone()[0],
-        "retiradas_vencidas": conn.execute(
-            f"SELECT COUNT(*) FROM pedidos WHERE status='no_endereco' AND data_fim_prevista < '{date.today().isoformat()}'"
-        ).fetchone()[0],
+        "clientes": clientes,
+        "disponiveis": frota.get("disponivel", 0),
+        "em_uso": frota.get("em_uso", 0),
+        "manutencao": frota.get("manutencao", 0),
+        "pedidos_abertos": pedidos["pedidos_abertos"] or 0,
+        "a_receber": pedidos["a_receber"] or 0,
+        "entregas_hoje": pedidos["entregas_hoje"] or 0,
+        "retiradas_vencidas": pedidos["retiradas_vencidas"] or 0,
     }
     conn.close()
     return s
@@ -564,6 +568,7 @@ _PEDIDO_SELECT = """
            p.obra_cep,p.obra_rua,p.obra_quadra,p.obra_numero,p.obra_bairro,
            p.data_inicio,p.data_fim_prevista,p.data_fim_real,p.criado_em,
            p.motorista_entrega,p.motorista_retirada,p.latitude,p.longitude,
+           p.valor_total,
            c.id AS cliente_id, c.nome AS cliente_nome, c.telefone,
            ca.codigo AS cacamba_codigo
     FROM pedidos p
@@ -868,6 +873,16 @@ def pedido_pagar(pid):
     return redirect(request.referrer or url_for("pedidos"))
 
 
+@app.route("/pedidos/<int:pid>/pagamento/desfazer", methods=["POST"])
+def pedido_desfazer_pagamento(pid):
+    conn = get_conn()
+    conn.execute("UPDATE pedidos SET pago=0 WHERE id=?", (pid,))
+    conn.commit()
+    conn.close()
+    flash("Pagamento marcado como pendente.", "ok")
+    return redirect(request.referrer or url_for("financeiro"))
+
+
 @app.route("/pedidos/<int:pid>/observacao", methods=["POST"])
 def pedido_observacao(pid):
     obs = request.form.get("observacoes","").strip()
@@ -952,28 +967,98 @@ def operacoes():
 def financeiro():
     f = request.args.get("f","")
     q = request.args.get("q","").strip()
+    data_ini = request.args.get("ini","").strip()
+    data_fim = request.args.get("fim","").strip()
+    exportar = request.args.get("export","").strip() == "csv"
     conn = get_conn()
 
     where, params = [], []
     where.append("p.status != 'pendente'")
-    if f == "pago":    where.append("p.pago=1")
-    if f == "pendente": where.append("p.pago=0")
-    if q: where.append("c.nome LIKE ?"); params.append(f"%{q}%")
+    if f == "pago":
+        where.append("p.pago=1")
+    elif f == "pendente":
+        where.append("p.pago=0")
+    elif f == "vencido":
+        where.append("p.pago=0 AND p.status='no_endereco' AND p.data_fim_prevista < ?")
+        params.append(date.today().isoformat())
+    elif f == "mes":
+        inicio_mes = date.today().replace(day=1).isoformat()
+        where.append("COALESCE(NULLIF(p.data_fim_real,''), NULLIF(p.data_inicio,''), p.criado_em) >= ?")
+        params.append(inicio_mes)
+    if data_ini:
+        where.append("COALESCE(NULLIF(p.data_fim_real,''), NULLIF(p.data_inicio,''), p.criado_em) >= ?")
+        params.append(data_ini)
+    if data_fim:
+        where.append("COALESCE(NULLIF(p.data_fim_real,''), NULLIF(p.data_inicio,''), p.criado_em) <= ?")
+        params.append(data_fim)
+    if q:
+        tokens = [_digits(t) or t for t in q.split() if t]
+        if tokens:
+            search_parts = []
+            for t in tokens:
+                like = f"%{t}%"
+                search_parts.append(
+                    "(NORM(c.nome) LIKE NORM(?) OR c.telefone LIKE ? OR CAST(p.id AS TEXT)=? "
+                    "OR NORM(COALESCE(p.obra_rua,'') || ' ' || COALESCE(p.obra_bairro,'') || ' ' || COALESCE(p.endereco_obra,'')) LIKE NORM(?))"
+                )
+                params.extend([like, like, t, like])
+            where.append("(" + " AND ".join(search_parts) + ")")
 
     sql = (_PEDIDO_SELECT + " WHERE " + " AND ".join(where) +
            " ORDER BY p.pago ASC, p.id DESC")
     rows = conn.execute(sql, params).fetchall()
 
-    totais = conn.execute(
+    resumo = conn.execute(
         """SELECT
              COUNT(*) AS total,
              SUM(CASE WHEN pago=1 THEN 1 ELSE 0 END) AS pagos,
-             SUM(CASE WHEN pago=0 AND status!='pendente' THEN 1 ELSE 0 END) AS pendentes
+             SUM(CASE WHEN pago=0 AND status!='pendente' THEN 1 ELSE 0 END) AS pendentes,
+             COALESCE(SUM(valor_total),0) AS valor_total,
+             COALESCE(SUM(CASE WHEN pago=1 THEN valor_total ELSE 0 END),0) AS valor_pago,
+             COALESCE(SUM(CASE WHEN pago=0 AND status!='pendente' THEN valor_total ELSE 0 END),0) AS valor_pendente,
+             COALESCE(SUM(CASE WHEN pago=0 AND status='no_endereco' AND data_fim_prevista < ? THEN valor_total ELSE 0 END),0) AS valor_vencido,
+             SUM(CASE WHEN pago=0 AND status='no_endereco' AND data_fim_prevista < ? THEN 1 ELSE 0 END) AS vencidos
            FROM pedidos WHERE status != 'pendente'"""
+        , (date.today().isoformat(), date.today().isoformat())
     ).fetchone()
+    por_status = conn.execute(
+        """SELECT status, COUNT(*) AS qtd, COALESCE(SUM(valor_total),0) AS valor
+           FROM pedidos
+           WHERE status != 'pendente'
+           GROUP BY status
+           ORDER BY valor DESC"""
+    ).fetchall()
+    por_mes = conn.execute(
+        """SELECT substr(COALESCE(NULLIF(data_fim_real,''), NULLIF(data_inicio,''), criado_em), 1, 7) AS mes,
+                  COUNT(*) AS qtd,
+                  COALESCE(SUM(valor_total),0) AS valor
+           FROM pedidos
+           WHERE status != 'pendente'
+           GROUP BY mes
+           ORDER BY mes DESC
+           LIMIT 6"""
+    ).fetchall()
+    ticket_medio = (resumo["valor_total"] or 0) / (resumo["total"] or 1)
+
+    if exportar:
+        linhas = ["pedido,cliente,telefone,status,pago,valor,data_inicio,data_fim_prevista,data_fim_real,endereco"]
+        for p in rows:
+            campos = [
+                p["id"], p["cliente_nome"], p["telefone"], p["status"],
+                "sim" if p["pago"] else "nao", f"{p['valor_total'] or 0:.2f}",
+                p["data_inicio"], p["data_fim_prevista"], p["data_fim_real"],
+                p["obra_rua"] or p["endereco_obra"] or "",
+            ]
+            linhas.append(",".join('"' + str(c or "").replace('"', '""') + '"' for c in campos))
+        conn.close()
+        return Response("\n".join(linhas), mimetype="text/csv",
+                        headers={"Content-Disposition": "attachment; filename=financeiro-cacambas.csv"})
+
     conn.close()
     return render_template("financeiro.html",
-        pedidos=rows, filtro=f, busca=q, totais=totais,
+        pedidos=rows, filtro=f, busca=q, totais=resumo,
+        por_status=por_status, por_mes=por_mes, ticket_medio=ticket_medio,
+        data_ini=data_ini, data_fim=data_fim,
         hoje=date.today().isoformat())
 
 
@@ -1264,23 +1349,29 @@ def api_clientes_search():
     if q:
         like = f"%{q}%"
         rows = conn.execute(
-            """SELECT id, nome, cpf, cnpj, tipo_pessoa, telefone
-               FROM clientes
-               WHERE nome LIKE ? OR cpf LIKE ? OR cnpj LIKE ? OR telefone LIKE ?
-               ORDER BY nome LIMIT 20""",
+            """SELECT c.id, c.nome, c.cpf, c.cnpj, c.tipo_pessoa, c.telefone,
+                      e.rua, e.numero, e.bairro
+               FROM clientes c
+               LEFT JOIN enderecos_cliente e ON e.id = (
+                   SELECT id FROM enderecos_cliente WHERE cliente_id=c.id ORDER BY id LIMIT 1
+               )
+               WHERE c.nome LIKE ? OR c.cpf LIKE ? OR c.cnpj LIKE ? OR c.telefone LIKE ?
+               ORDER BY c.nome LIMIT 20""",
             (like, like, like, like)
         ).fetchall()
     else:
         rows = conn.execute(
-            "SELECT id, nome, cpf, cnpj, tipo_pessoa, telefone FROM clientes ORDER BY nome LIMIT 20"
+            """SELECT c.id, c.nome, c.cpf, c.cnpj, c.tipo_pessoa, c.telefone,
+                      e.rua, e.numero, e.bairro
+               FROM clientes c
+               LEFT JOIN enderecos_cliente e ON e.id = (
+                   SELECT id FROM enderecos_cliente WHERE cliente_id=c.id ORDER BY id LIMIT 1
+               )
+               ORDER BY c.nome LIMIT 20"""
         ).fetchall()
     results = []
     for r in rows:
         # Buscar primeiro endereço do cliente
-        end = conn.execute(
-            "SELECT rua, numero, bairro FROM enderecos_cliente WHERE cliente_id=? ORDER BY id LIMIT 1",
-            (r["id"],)
-        ).fetchone()
         doc = ""
         if r["tipo_pessoa"] == "pf" and r["cpf"] and len(r["cpf"]) == 11:
             c = r["cpf"]
@@ -1289,9 +1380,10 @@ def api_clientes_search():
             c = r["cnpj"]
             doc = f"{c[0:2]}.{c[2:5]}.{c[5:8]}/{c[8:12]}-{c[12:14]}"
         endereco_str = ""
-        if end:
-            endereco_str = end["rua"]
-            if end["numero"]: endereco_str += f", {end['numero']}"
+        end = r
+        if r["rua"]:
+            endereco_str = r["rua"]
+            if r["numero"]: endereco_str += f", {r['numero']}"
             if end["bairro"]:  endereco_str += f" — {end['bairro']}"
         results.append({
             "id": r["id"],
@@ -1309,8 +1401,35 @@ def api_stats():
     return Response(json.dumps(_stats()), mimetype="application/json")
 
 
-if __name__ == "__main__":
-    app.run()
+@app.route("/api/financeiro/resumo")
+def api_financeiro_resumo():
+    hoje_iso = date.today().isoformat()
+    conn = get_conn()
+    resumo = conn.execute(
+        """SELECT
+             COUNT(*) AS total,
+             COALESCE(SUM(valor_total),0) AS valor_total,
+             COALESCE(SUM(CASE WHEN pago=1 THEN valor_total ELSE 0 END),0) AS valor_pago,
+             COALESCE(SUM(CASE WHEN pago=0 AND status!='pendente' THEN valor_total ELSE 0 END),0) AS valor_pendente,
+             COALESCE(SUM(CASE WHEN pago=0 AND status='no_endereco' AND data_fim_prevista < ? THEN valor_total ELSE 0 END),0) AS valor_vencido
+           FROM pedidos WHERE status != 'pendente'""",
+        (hoje_iso,),
+    ).fetchone()
+    meses = conn.execute(
+        """SELECT substr(COALESCE(NULLIF(data_fim_real,''), NULLIF(data_inicio,''), criado_em), 1, 7) AS mes,
+                  COUNT(*) AS qtd,
+                  COALESCE(SUM(valor_total),0) AS valor
+           FROM pedidos
+           WHERE status != 'pendente'
+           GROUP BY mes
+           ORDER BY mes DESC
+           LIMIT 6"""
+    ).fetchall()
+    conn.close()
+    return Response(json.dumps({
+        "resumo": dict(resumo),
+        "meses": [dict(r) for r in meses],
+    }), mimetype="application/json")
 
 @app.route("/api/pedidos/enderecos")
 def api_pedidos_enderecos():
@@ -1356,3 +1475,7 @@ def api_pedidos_enderecos():
             break
 
     return Response(json.dumps(results), mimetype="application/json")
+
+
+if __name__ == "__main__":
+    app.run()

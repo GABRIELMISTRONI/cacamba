@@ -16,6 +16,10 @@ def _norm(s):
 def get_conn():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA synchronous = NORMAL")
+    conn.execute("PRAGMA temp_store = MEMORY")
     conn.create_function("NORM", 1, _norm)
     return conn
 
@@ -106,7 +110,14 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_pedidos_cacamba ON pedidos(cacamba_id);
         CREATE INDEX IF NOT EXISTS idx_pedidos_status ON pedidos(status);
         CREATE INDEX IF NOT EXISTS idx_pedidos_pago ON pedidos(pago);
+        CREATE INDEX IF NOT EXISTS idx_pedidos_status_pago ON pedidos(status,pago);
+        CREATE INDEX IF NOT EXISTS idx_pedidos_fim_prevista ON pedidos(data_fim_prevista);
+        CREATE INDEX IF NOT EXISTS idx_pedidos_inicio ON pedidos(data_inicio);
+        CREATE INDEX IF NOT EXISTS idx_pedidos_criado ON pedidos(criado_em);
+        CREATE INDEX IF NOT EXISTS idx_clientes_nome ON clientes(nome);
+        CREATE INDEX IF NOT EXISTS idx_clientes_telefone ON clientes(telefone);
         CREATE INDEX IF NOT EXISTS idx_enderecos_cliente ON enderecos_cliente(cliente_id);
+        CREATE INDEX IF NOT EXISTS idx_enderecos_busca ON enderecos_cliente(rua,bairro);
         CREATE INDEX IF NOT EXISTS idx_historico_pedido ON historico_pedidos(pedido_id);
     """)
     

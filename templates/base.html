@@ -3,63 +3,73 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Caçambas{% endblock %} — Bauru/SP</title>
+  <title>{% block title %}Cacambas{% endblock %} - Bauru/SP</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/icone-cacamba.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
   {% block head_extra %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}" data-pre-cliente-id="{{ pre_cliente_id or '' }}">
+  <svg class="svg-sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-dashboard" viewBox="0 0 24 24"><path d="M4 13h7V4H4v9Zm9 7h7V4h-7v16ZM4 20h7v-5H4v5Z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 11a4 4 0 1 0-3.2-6.4A5 5 0 0 1 14 8c0 1.1-.35 2.12-.95 2.95.8.15 1.75.05 2.95.05Zm-8 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-3.35 0-6 1.68-6 3.75V20h12v-2.25C14 15.68 11.35 14 8 14Zm8-.8c-.8 0-1.56.08-2.25.23 1.44.86 2.25 2 2.25 3.32V20h6v-2.25c0-2.07-2.65-3.75-6-3.75Z"/></symbol>
+    <symbol id="i-container" viewBox="0 0 24 24"><path d="M3 8.5 5 5h14l2 3.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8.5Zm3.2-1.5-.85 1.5h13.3L17.8 7H6.2ZM7 11v7h2v-7H7Zm4 0v7h2v-7h-2Zm4 0v7h2v-7h-2Z"/></symbol>
+    <symbol id="i-orders" viewBox="0 0 24 24"><path d="M7 3h10a2 2 0 0 1 2 2v16l-3-1.5-3 1.5-3-1.5L7 21l-2-1V5a2 2 0 0 1 2-2Zm2 5h6V6H9v2Zm0 4h6v-2H9v2Zm0 4h4v-2H9v2Z"/></symbol>
+    <symbol id="i-truck" viewBox="0 0 24 24"><path d="M3 6h11v9h1.2l2-4H21v4h1v3h-2.1a3 3 0 0 1-5.8 0H9.9a3 3 0 0 1-5.8 0H3V6Zm14.4 7-1 2H19v-2h-1.6ZM7 19a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm10 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"/></symbol>
+    <symbol id="i-money" viewBox="0 0 24 24"><path d="M3 6h18v12H3V6Zm3 3a2 2 0 0 1-2 2v2a2 2 0 0 1 2 2h12a2 2 0 0 1 2-2v-2a2 2 0 0 1-2-2H6Zm6 6a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="m9 18-6 3V6l6-3 6 3 6-3v15l-6 3-6-3Zm1-12.5v10.8l4 2V7.5l-4-2ZM5 7.2v10.6l3-1.5V5.7L5 7.2Zm11 .5v10.6l3-1.5V6.2l-3 1.5Z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="m19.4 13.5 1.6 1.2-2 3.5-1.9-.8a7.6 7.6 0 0 1-1.6.9L15.2 20h-4l-.3-1.7a7.6 7.6 0 0 1-1.6-.9l-1.9.8-2-3.5 1.6-1.2a6.7 6.7 0 0 1 0-1.9l-1.6-1.2 2-3.5 1.9.8c.5-.36 1.05-.66 1.6-.9l.3-1.8h4l.3 1.8c.55.24 1.1.54 1.6.9l1.9-.8 2 3.5-1.6 1.2c.1.65.1 1.25 0 1.9ZM13.2 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M12 5a7 7 0 1 1-6.3 10H3.55A9 9 0 1 0 6 5.7V3H4v6h6V7H7.25A6.98 6.98 0 0 1 12 5Z"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 15.2A8.5 8.5 0 0 1 8.8 3.5 9 9 0 1 0 20.5 15.2Z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><path d="M11 2h2v3h-2V2Zm0 17h2v3h-2v-3ZM4.22 5.64l1.42-1.42 2.12 2.12-1.42 1.42-2.12-2.12Zm12.02 12.02 1.42-1.42 2.12 2.12-1.42 1.42-2.12-2.12ZM2 11h3v2H2v-2Zm17 0h3v2h-3v-2ZM4.22 18.36l2.12-2.12 1.42 1.42-2.12 2.12-1.42-1.42ZM16.24 6.34l2.12-2.12 1.42 1.42-2.12 2.12-1.42-1.42ZM12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z"/></symbol>
+  </svg>
 
-  <!-- Overlay mobile -->
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
-  <!-- ── Sidebar ──────────────────────────────────────────── -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
-      <img src="{{ url_for('static', filename='images/icone-cacamba.png') }}" width="36" height="36" alt="Logo">
+      <img src="{{ url_for('static', filename='images/icone-cacamba.png') }}" width="40" height="40" alt="Logo">
       <div>
-        <span class="brand-name">{{ empresa_nome or 'Caçambas' }}</span>
-        <span class="brand-sub">{{ empresa_fone or 'Bauru · SP' }}</span>
+        <span class="brand-name">{{ empresa_nome or 'Cacambas' }}</span>
+        <span class="brand-sub">{{ empresa_fone or 'Bauru - SP' }}</span>
       </div>
     </div>
 
     <nav class="sidebar-nav">
-  <div class="breadcrumbs" id="breadcrumbs"></div>
       <span class="nav-section">Principal</span>
       <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
-        <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span>
+        <span class="nav-icon"><svg><use href="#i-dashboard"></use></svg></span><span class="nav-label">Dashboard</span>
       </a>
 
-      <span class="nav-section">Gestão</span>
+      <span class="nav-section">Gestao</span>
       <a href="{{ url_for('clientes') }}" class="nav-item {% if request.endpoint in ['clientes','cliente_novo','cliente_detalhe','cliente_editar'] %}active{% endif %}">
-        <span class="nav-icon">👤</span><span class="nav-label">Clientes</span>
+        <span class="nav-icon"><svg><use href="#i-users"></use></svg></span><span class="nav-label">Clientes</span>
       </a>
       <a href="{{ url_for('cacambas') }}" class="nav-item {% if request.endpoint in ['cacambas','cacamba_nova'] %}active{% endif %}">
-        <span class="nav-icon">📦</span><span class="nav-label">Caçambas</span>
+        <span class="nav-icon"><svg><use href="#i-container"></use></svg></span><span class="nav-label">Cacambas</span>
       </a>
       <a href="{{ url_for('pedidos') }}" class="nav-item {% if request.endpoint in ['pedidos','pedido_novo'] %}active{% endif %}">
-        <span class="nav-icon">📄</span><span class="nav-label">Pedidos</span>
+        <span class="nav-icon"><svg><use href="#i-orders"></use></svg></span><span class="nav-label">Pedidos</span>
         {% if stats_sidebar and stats_sidebar.pendentes > 0 %}<span class="nav-badge warn">{{ stats_sidebar.pendentes }}</span>{% endif %}
       </a>
 
       <span class="nav-section">Operacional</span>
       <a href="{{ url_for('operacoes') }}" class="nav-item {% if request.endpoint == 'operacoes' %}active{% endif %}">
-        <span class="nav-icon">🚚</span><span class="nav-label">Operações</span>
-        {% if stats_sidebar and stats_sidebar.vencidas > 0 %}<span class="nav-badge danger" data-tip="Caçambas atrasadas">{{ stats_sidebar.vencidas }}</span>{% elif stats_sidebar and stats_sidebar.confirmar > 0 %}<span class="nav-badge">{{ stats_sidebar.confirmar }}</span>{% endif %}
+        <span class="nav-icon"><svg><use href="#i-truck"></use></svg></span><span class="nav-label">Operacoes</span>
+        {% if stats_sidebar and stats_sidebar.vencidas > 0 %}<span class="nav-badge danger" data-tip="Cacambas atrasadas">{{ stats_sidebar.vencidas }}</span>{% elif stats_sidebar and stats_sidebar.confirmar > 0 %}<span class="nav-badge">{{ stats_sidebar.confirmar }}</span>{% endif %}
       </a>
       <a href="{{ url_for('financeiro') }}" class="nav-item {% if request.endpoint == 'financeiro' %}active{% endif %}">
-        <span class="nav-icon">💰</span><span class="nav-label">Financeiro</span>
+        <span class="nav-icon"><svg><use href="#i-money"></use></svg></span><span class="nav-label">Financeiro</span>
       </a>
       <a href="{{ url_for('mapa') }}" class="nav-item {% if request.endpoint == 'mapa' %}active{% endif %}">
-        <span class="nav-icon">🗺</span><span class="nav-label">Mapa</span>
+        <span class="nav-icon"><svg><use href="#i-map"></use></svg></span><span class="nav-label">Mapa</span>
       </a>
 
       <span class="nav-section">Sistema</span>
       <a href="{{ url_for('configuracoes') }}" class="nav-item {% if request.endpoint == 'configuracoes' %}active{% endif %}">
-        <span class="nav-icon">⚙️</span><span class="nav-label">Configurações</span>
+        <span class="nav-icon"><svg><use href="#i-settings"></use></svg></span><span class="nav-label">Configuracoes</span>
       </a>
     </nav>
 
@@ -70,31 +80,27 @@
         <a class="contact-phone" href="tel:{{ empresa_fone|replace(' ','')|replace('(','')|replace(')','')|replace('-','') }}">{{ empresa_fone }}</a>
       </div>
       {% endif %}
-      <a href="{{ url_for('reset_banco') }}" class="nav-item nav-item-danger"
-         onclick="return confirm('Resetar TODOS os dados?')">
-        <span class="nav-icon">🔄</span><span class="nav-label">Reset banco</span>
+      <a href="{{ url_for('reset_banco') }}" class="nav-item nav-item-danger" onclick="return confirm('Resetar TODOS os dados?')">
+        <span class="nav-icon"><svg><use href="#i-reset"></use></svg></span><span class="nav-label">Reset banco</span>
       </a>
     </div>
   </aside>
 
-  <!-- ── Main wrapper ─────────────────────────────────────── -->
   <div class="layout-main">
-    <!-- Topbar mobile -->
-     <header class="topbar">
-       <button class="topbar-toggle" onclick="toggleSidebar()" aria-label="Menu">
-         <span></span><span></span><span></span>
-       </button>
-       <span class="topbar-title">{% block topbar_title %}{% block title2 %}{% endblock %}{% endblock %}</span>
-       <div class="topbar-actions">
-         {% block topbar_actions %}{% endblock %}
-         <button class="btn btn-sm" id="theme-toggle" aria-label="Alternar tema" title="Alternar tema">
-           <span id="theme-icon">🌙</span>
-         </button>
-       </div>
-     </header>
+    <header class="topbar">
+      <button class="topbar-toggle" onclick="toggleSidebar()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <span class="topbar-title">{% block topbar_title %}{% block title2 %}{% endblock %}{% endblock %}</span>
+      <div class="topbar-actions">
+        {% block topbar_actions %}{% endblock %}
+        <button class="btn btn-sm theme-toggle" id="theme-toggle" aria-label="Alternar tema" title="Alternar tema">
+          <span id="theme-icon" class="theme-icon"><svg><use href="#i-moon"></use></svg></span>
+        </button>
+      </div>
+    </header>
 
     <main class="{% block main_class %}main-shell{% endblock %}">
-      <!-- Breadcrumbs -->
       <nav class="breadcrumbs" aria-label="Breadcrumb">
         {% block breadcrumbs %}{% endblock %}
       </nav>
@@ -111,7 +117,6 @@
       {% block content %}{% endblock %}
     </main>
 
-    <!-- Modal container -->
     <div id="modal-backdrop" class="modal-backdrop" style="display:none;"></div>
     <div id="modal" class="modal" role="dialog" aria-modal="true" style="display:none;">
       <div class="modal-content">
@@ -136,12 +141,10 @@
     document.getElementById('sidebarOverlay').classList.remove('visible');
   }
 
-  // Topbar shadow ao scroll
   window.addEventListener('scroll', function() {
     document.querySelector('.topbar').classList.toggle('scrolled', window.scrollY > 10);
   });
 
-  // Auto-dismiss flash messages
   document.querySelectorAll('.flash').forEach(function(el) {
     setTimeout(function() {
       el.style.transition = 'opacity .5s, max-height .5s, margin .5s, padding .5s';
@@ -152,7 +155,6 @@
       el.style.overflow = 'hidden';
       setTimeout(function() { el.remove(); }, 500);
     }, 5000);
-    // Click to dismiss
     el.style.cursor = 'pointer';
     el.addEventListener('click', function() {
       el.style.transition = 'opacity .3s';
@@ -161,7 +163,6 @@
     });
   });
 
-  // Abrir links externos no Maps quando endereço é clicado
   document.querySelectorAll('.end-link').forEach(function(a) {
     a.addEventListener('click', function(e) { e.stopPropagation(); });
   });
