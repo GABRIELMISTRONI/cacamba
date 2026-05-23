@@ -63,7 +63,7 @@
 {% block content %}
 <div class="card">
   <h2 class="card-title">Criar Novo Pedido</h2>
-  <form method="POST" action="{{ url_for('pedido_novo') }}">
+  <form method="POST" action="{{ url_for('pedido_novo') }}" data-loading>
 
     <div class="form-grid">
       <div class="form-group span-2">
@@ -83,13 +83,13 @@
       <div class="form-group">
         <label for="capacidade">Capacidade (m³) *</label>
         <select id="capacidade" name="capacidade" required>
-          <option value="3">3 m³</option>
-          <option value="4">4 m³</option>
+          <option value="3">3 m³ — {{ valores_locacao.get(3, 300) | brl }}</option>
+          <option value="4">4 m³ — {{ valores_locacao.get(4, 330) | brl }}</option>
         </select>
       </div>
 
       <div class="form-group">
-        <label for="data_fim_prevista">Data Prevista de Retirada <small class="muted">(padrão: 7 dias)</small></label>
+        <label for="data_fim_prevista">Data prevista de retirada <small class="muted">(padrão: {{ dias_locacao }} dias)</small></label>
         <input type="date" id="data_fim_prevista" name="data_fim_prevista">
       </div>
 
@@ -168,7 +168,7 @@ $(document).ready(function () {
       if (c.doc)      info.push(c.doc);
       if (c.telefone) info.push(c.telefone);
       if (info.length) $el.append($('<small class="s2-doc">').text(info.join(' · ')));
-      if (c.endereco) $el.append($('<small class="s2-end">').text('📍 ' + c.endereco));
+      if (c.endereco) $el.append($('<small class="s2-end">').text(c.endereco));
       return $el;
     },
     templateSelection: function (c) { return c.text || c.id; }
@@ -224,10 +224,10 @@ $(document).ready(function () {
       .forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
   }
 
-  // ── Data mínima hoje, padrão +7 dias ───────────────────────────────
+  var diasLoc = parseInt(document.body.dataset.diasLocacao || '7', 10) || 7;
   var today = new Date();
   var minDate = today.toISOString().split('T')[0];
-  var defDate = new Date(today.getTime() + 7*24*60*60*1000).toISOString().split('T')[0];
+  var defDate = new Date(today.getTime() + diasLoc * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   var dtInput = document.getElementById('data_fim_prevista');
   dtInput.min   = minDate;
   dtInput.value = defDate;

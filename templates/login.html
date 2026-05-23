@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entrar — Caçambas Bauru</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/icone-cacamba.svg') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+</head>
+<body>
+  <main class="login-page">
+    <div class="card login-card">
+      <img src="{{ url_for('static', filename='images/icone-cacamba.svg') }}" width="56" height="56" alt="">
+      <h1>Caçambas Bauru</h1>
+      <p class="muted">Informe a senha de acesso ao sistema.</p>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for cat, msg in messages %}
+            <div class="flash {{ cat }}">{{ msg }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      <form method="post" class="login-form">
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" name="senha" required autofocus autocomplete="current-password">
+        <button type="submit" class="btn" style="width:100%;margin-top:1rem">Entrar</button>
+      </form>
+    </div>
+  </main>
+</body>
+</html>

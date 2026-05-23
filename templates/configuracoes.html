@@ -10,7 +10,7 @@
 <div class="config-grid">
   <!-- Empresa e operação -->
   <div class="card">
-    <h3 class="card-title">⚙️ Parâmetros gerais</h3>
+    <h3 class="card-title">Parâmetros gerais</h3>
     <form method="post">
       <div class="form-grid" style="grid-template-columns:1fr">
         <div>
@@ -28,23 +28,38 @@
                  style="width:100px">
           <p class="hint" style="margin-top:.3rem">Número de dias corridos antes da retirada.</p>
         </div>
+        <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:1rem;margin-top:.5rem">
+          <div>
+            <label>Valor locação 3 m³ (R$)</label>
+            <input name="valor_locacao_3" type="text" inputmode="decimal"
+                   value="{{ config.get('valor_locacao_3m3', valores_locacao.get(3, 300)) }}"
+                   placeholder="300,00">
+          </div>
+          <div>
+            <label>Valor locação 4 m³ (R$)</label>
+            <input name="valor_locacao_4" type="text" inputmode="decimal"
+                   value="{{ config.get('valor_locacao_4m3', valores_locacao.get(4, 330)) }}"
+                   placeholder="330,00">
+          </div>
+        </div>
+        <p class="hint">Valores usados automaticamente em novos pedidos e trocas de caçamba.</p>
       </div>
       <div class="form-actions">
-        <button type="submit" class="btn">💾 Salvar</button>
+        <button type="submit" class="btn">Salvar</button>
       </div>
     </form>
   </div>
 
   <!-- Motoristas -->
   <div class="card">
-    <h3 class="card-title">🚚 Motoristas</h3>
+    <h3 class="card-title">Motoristas</h3>
     {% if motoristas %}
       {% for m in motoristas %}
       <div class="config-item">
-        <span>{{ m }}</span>
-        <form method="post" action="{{ url_for('motorista_excluir', mid=loop.index) }}"
-              onsubmit="return confirm('Remover '+this.dataset.nome+'?')" data-nome="{{ m }}">
-          <button class="btn-icon-danger" title="Remover">✕</button>
+        <span>{{ m.nome }}</span>
+        <form method="post" action="{{ url_for('motorista_excluir', mid=m.id) }}"
+              onsubmit="return confirm('Remover {{ m.nome }}?')">
+          <button type="submit" class="btn-icon-remove" title="Remover" aria-label="Remover motorista">×</button>
         </form>
       </div>
       {% endfor %}
@@ -59,7 +74,7 @@
 
   <!-- Frota por tipo -->
   <div class="card">
-    <h3 class="card-title">📦 Frota por capacidade</h3>
+    <h3 class="card-title">Frota por capacidade</h3>
     {% for c in capacidades %}
     <div class="config-item">
       <span><strong>{{ c.capacidade_m3 }} m³</strong></span>
@@ -71,14 +86,16 @@
 
   <!-- Sobre -->
   <div class="card">
-    <h3 class="card-title">ℹ️ Sobre o sistema</h3>
+    <h3 class="card-title">Sobre o sistema</h3>
     <div style="font-size:.88rem;line-height:1.8;color:var(--muted)">
       <p><strong style="color:var(--text)">Caçambas Bauru/SP</strong></p>
       <p>Sistema de gestão para empresas de locação de caçambas.</p>
       <p>Fluxo: Pendente → Confirmado → No endereço → Finalizado</p>
+      {% if enable_reset %}
       <p style="margin-top:.6rem">
-        <a href="{{ url_for('reset_banco') }}" class="link-danger" onclick="return confirm('Tem certeza? Apaga TODOS os dados.')">⚠ Resetar banco de dados</a>
+        <a href="{{ url_for('reset_banco') }}" class="link-danger">Resetar banco de dados</a>
       </p>
+      {% endif %}
     </div>
   </div>
 </div>

@@ -14,23 +14,21 @@
     <p>Busque por nome, CPF/CNPJ, telefone, endereço ou bairro.</p>
   </div>
   <div class="actions">
+    <a class="btn btn-sec" href="{{ url_for('clientes_exportar_csv') }}">Exportar CSV</a>
     <a class="btn" href="{{ url_for('cliente_novo') }}">+ Novo cliente</a>
   </div>
 </section>
 
 <!-- Busca com dropdown -->
 <div class="card busca-card" style="padding:.85rem 1.2rem">
-  <div style="position:relative" id="busca-wrap">
-    <span style="position:absolute;left:.9rem;top:50%;transform:translateY(-50%);font-size:1.05rem;pointer-events:none;opacity:.45;z-index:1">🔍</span>
+  <div class="busca-input-wrap" id="busca-wrap">
     <input type="text" id="busca-live"
            value="{{ busca }}"
            placeholder="Digite nome, CPF, telefone, rua, bairro…"
            autocomplete="off"
            class="busca-input"
-           style="width:100%;padding-left:2.8rem;font-size:1rem">
-    <button id="btn-limpar" onclick="limparBusca()" title="Limpar"
-            style="display:none;position:absolute;right:.75rem;top:50%;transform:translateY(-50%);
-                   background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--muted)">✕</button>
+           style="width:100%;font-size:1rem">
+    <button type="button" id="btn-limpar" class="btn-clear-search" onclick="limparBusca()" title="Limpar busca">Limpar</button>
   </div>
   <div id="busca-status" style="font-size:.82rem;color:var(--muted);margin-top:.4rem;min-height:1.1em"></div>
 </div>
@@ -113,7 +111,7 @@
     </tbody>
   </table>
   <div id="empty-msg" style="display:none" class="empty-state">
-    <span class="empty-icon">🔍</span>
+    <span class="empty-icon" aria-hidden="true"></span>
     <p>Nenhum resultado para "<strong id="empty-termo"></strong>".</p>
     <button class="btn btn-sec btn-sm" onclick="limparBusca()">Limpar busca</button>
   </div>
@@ -169,7 +167,7 @@
       var e = t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
       s = s.replace(new RegExp('(' + e + ')','gi'), '[[MK]]$1[[/MK]]');
     });
-    s = s.replace(/\[\[MK\]\]/g, '<mark style="background:#fff176;border-radius:2px;padding:0 1px;font-weight:800">')
+    s = s.replace(/\[\[MK\]\]/g, '<mark class="busca-mark">')
          .replace(/\[\[\/MK\]\]/g, '</mark>');
     return s;
   }
@@ -215,11 +213,11 @@
     matches.forEach(function(c, idx) {
       var nomeMark = mark(c._nomeOrig, termos);
       var sub = '';
-      if (c.doc) sub += '<span style="white-space:nowrap">🪪 ' + mark(c.doc, termos) + '</span>';
+      if (c.doc) sub += '<span style="white-space:nowrap">' + mark(c.doc, termos) + '</span>';
       if (c.end) {
         String(c.end).split('|').forEach(function(e) {
           var et = e.trim();
-          if (et) sub += '<span>📍 ' + mark(et, termos) + '</span>';
+          if (et) sub += '<span>' + mark(et, termos) + '</span>';
         });
       }
       ddHtml += '<li data-href="' + c.href + '" data-idx="' + idx + '" style="display:flex;align-items:flex-start;gap:.65rem;padding:.6rem .9rem;cursor:pointer;border-radius:8px;margin:.1rem .3rem;transition:background .1s">'

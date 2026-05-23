@@ -14,9 +14,9 @@
 <div class="card table-wrap">
   <div class="filtros-bar">
     <a href="{{ url_for('cacambas') }}" class="filtro-chip {% if not filtro %}ativo{% endif %}">Todas ({{ total }})</a>
-    <a href="{{ url_for('cacambas', f='disponivel') }}" class="filtro-chip {% if filtro=='disponivel' %}ativo ok{% endif %}">✓ Disponíveis ({{ n_disp }})</a>
-    <a href="{{ url_for('cacambas', f='em_uso') }}" class="filtro-chip {% if filtro=='em_uso' %}ativo alerta{% endif %}">🔒 Alugadas ({{ n_uso }})</a>
-    <a href="{{ url_for('cacambas', f='manutencao') }}" class="filtro-chip {% if filtro=='manutencao' %}ativo{% endif %}">🔧 Manutenção ({{ n_manut }})</a>
+    <a href="{{ url_for('cacambas', f='disponivel') }}" class="filtro-chip {% if filtro=='disponivel' %}ativo ok{% endif %}">Disponíveis ({{ n_disp }})</a>
+    <a href="{{ url_for('cacambas', f='em_uso') }}" class="filtro-chip {% if filtro=='em_uso' %}ativo alerta{% endif %}">Alugadas ({{ n_uso }})</a>
+    <a href="{{ url_for('cacambas', f='manutencao') }}" class="filtro-chip {% if filtro=='manutencao' %}ativo{% endif %}">Manutenção ({{ n_manut }})</a>
   </div>
 
   {% if cacambas %}
@@ -29,11 +29,11 @@
       <tr>
         <td class="mono"><strong>#{{ c.codigo }}</strong></td>
         <td>{{ c.capacidade_m3 }} m³</td>
-        <td><span class="status-chip status-{{ c.status }}">{{ c.status.replace('_',' ') }}</span></td>
+        <td><span class="status-chip status-{{ c.status }}">{{ c.status | status_label }}</span></td>
         <td>
           {% if c.status == 'disponivel' %}
           <form class="inline-form" method="post" action="{{ url_for('cacamba_manutencao', cid=c.id) }}">
-            <button class="btn btn-sec btn-sm">→ Manutenção</button>
+            <button class="btn btn-sec btn-sm">Enviar para manutenção</button>
           </form>
           {% elif c.status == 'manutencao' %}
           <form class="inline-form" method="post" action="{{ url_for('cacamba_disponivel', cid=c.id) }}">

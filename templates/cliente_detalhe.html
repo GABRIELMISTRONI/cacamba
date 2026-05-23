@@ -9,14 +9,20 @@
         {{ 'Pessoa Jurídica' if cliente.tipo_pessoa == 'pj' else 'Pessoa Física' }}
       </span>
       {% if cliente.razao_social %} · {{ cliente.razao_social }}{% endif %}
+      {% if ativos %}
+        <span class="chip-ativo">{{ ativos|length }} pedido{{ 's' if ativos|length != 1 else '' }} ativo{{ 's' if ativos|length != 1 else '' }}</span>
+      {% endif %}
+      {% if pendente_pagamento %}
+        <span class="chip-pendente">{{ pendente_pagamento|length }} pagamento{{ 's' if pendente_pagamento|length != 1 else '' }} pendente{{ 's' if pendente_pagamento|length != 1 else '' }}</span>
+      {% endif %}
     </p>
   </div>
   <div class="actions">
     <a class="btn" href="{{ url_for('pedido_novo', cliente_id=cliente.id) }}">+ Nova locação</a>
-    <a class="btn btn-sec" href="{{ url_for('cliente_editar', cid=cliente.id) }}">✏ Editar</a>
+    <a class="btn btn-sec" href="{{ url_for('cliente_editar', cid=cliente.id) }}">Editar</a>
     <form method="post" action="{{ url_for('cliente_excluir', cid=cliente.id) }}" class="inline-form"
           onsubmit="return confirm('Excluir este cliente permanentemente?')">
-      <button type="submit" class="btn btn-danger">✕ Excluir</button>
+      <button type="submit" class="btn btn-danger">Excluir</button>
     </form>
     <a class="btn btn-sec" href="{{ url_for('clientes') }}">← Lista</a>
   </div>
@@ -31,9 +37,9 @@
         <span class="detalhe-val">
           {{ cliente.telefone }}
           {% if cliente.telefone %}
-          <a href="https://wa.me/55{{ cliente.telefone|replace(' ','')|replace('(','')|replace(')','')|replace('-','') }}?text=Olá, sua caçamba será entregue hoje." 
+          <a href="https://wa.me/55{{ cliente.telefone|replace(' ','')|replace('(','')|replace(')','')|replace('-','') }}" 
              target="_blank" class="btn btn-sm" style="margin-left:.5rem; background:#25D366; color:white; border:none;">
-            📱 WhatsApp
+            WhatsApp
           </a>
           {% endif %}
         </span>
@@ -96,7 +102,7 @@
         </div>
       </div>
       <div class="form-actions" style="margin-top:.75rem">
-        <button type="submit" class="btn btn-sm">💾 Salvar endereço</button>
+        <button type="submit" class="btn btn-sm">Salvar endereço</button>
         <button type="button" class="btn btn-sec btn-sm" onclick="toggleForm('form-end')">Cancelar</button>
       </div>
     </form>
@@ -114,14 +120,14 @@
           {%- if e.bairro %} — {{ e.bairro }}{% endif %}
         </span>
         {% if e.quadra %}
-          <span class="end-quadra-badge">🟧 Quadra {{ e.quadra }}</span>
+          <span class="end-quadra-badge">Quadra {{ e.quadra }}</span>
         {% endif %}
         {% if e.cep and e.cep|length == 8 %}<small class="muted mono">CEP {{ e.cep[0:5] }}-{{ e.cep[5:8] }}</small>{% endif %}
         {% if e.complemento %}<small class="muted">{{ e.complemento }}</small>{% endif %}
       </div>
       <form method="post" action="{{ url_for('cliente_endereco_excluir', cid=cliente.id, eid=e.id) }}"
             onsubmit="return confirm('Remover este endereço?')">
-        <button type="submit" class="btn-icon-danger" title="Remover">✕</button>
+        <button type="submit" class="btn-icon-remove" title="Remover" aria-label="Remover endereço">×</button>
       </form>
     </div>
     {% endfor %}
@@ -154,8 +160,8 @@
     <tbody>
       {% for p in pedidos %}
       {% set vencida = p.data_fim_prevista and p.data_fim_prevista < hoje and p.status != 'finalizado' %}
-      <tr class="{% if vencida %}linha-vencida{% endif %}">
-        <td class="mono">#{{ p.id }}</td>
+      <tr class="linha-clicavel {% if vencida %}linha-vencida{% endif %}" data-href="{{ url_for('pedido_detalhe', pid=p.id) }}" onclick="location.href=this.dataset.href">
+        <td class="mono"><a href="{{ url_for('pedido_detalhe', pid=p.id) }}" onclick="event.stopPropagation()">#{{ p.id }}</a></td>
         <td class="cel-obra-pedido">
           {{ p.obra_rua or p.endereco_obra or '—' }}
           {%- if p.obra_quadra %}, Q.{{ p.obra_quadra }}{% endif %}
@@ -175,13 +181,13 @@
           {% if vencida %}<br><span class="badge-vencido">vencida</span>{% endif %}
         </td>
         <td>{{ p.cacamba_codigo or '—' }}</td>
-        <td><span class="status-chip status-{{ p.status }}">{{ p.status.replace('_',' ') }}</span></td>
+        <td><span class="status-chip status-{{ p.status }}">{{ p.status | status_label }}</span></td>
         <td>
           {% if p.pago %}
-            <span class="badge-pago">✓ Pago</span>
+            <span class="badge-pago">Pago</span>
           {% else %}
             <span class="badge-nao-pago">Pendente</span>
-            <form class="inline-form" method="post" action="{{ url_for('pedido_pagar', pid=p.id) }}">
+            <form class="inline-form" method="post" action="{{ url_for('pedido_pagar', pid=p.id) }}" onclick="event.stopPropagation()">
               <input type="hidden" name="origem" value="cliente_{{ cliente.id }}">
               <button type="submit" class="btn-pagar">Marcar pago</button>
             </form>

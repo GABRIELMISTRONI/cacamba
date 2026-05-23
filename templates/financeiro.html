@@ -8,32 +8,32 @@
 
 <section class="page-head finance-head">
   <div>
-    <span class="hero-kicker">Gestao financeira</span>
+    <span class="hero-kicker">Gestão financeira</span>
     <h2>Financeiro</h2>
-    <p>Acompanhe valores recebidos, pendencias, vencidos e historico mensal das locacoes.</p>
+    <p>Acompanhe valores recebidos, pendências, vencidos e histórico mensal das locações.</p>
   </div>
-  <a class="btn" href="{{ url_for('pedido_novo') }}"><svg class="erp-icon"><use href="#i-orders"></use></svg> Nova locacao</a>
+  <a class="btn" href="{{ url_for('pedido_novo') }}"><svg class="erp-icon"><use href="#i-orders"></use></svg> Nova locação</a>
 </section>
 
 <div class="financeiro-resumo financeiro-resumo-pro">
   <div class="fin-card azul">
     <span class="fin-card-label">Receita contratada</span>
-    <div class="fin-num">{{ "R$ {:,.2f}".format(totais.valor_total or 0).replace(",", "X").replace(".", ",").replace("X", ".") }}</div>
-    <div class="fin-label">{{ totais.total or 0 }} locacoes consideradas</div>
+    <div class="fin-num">{{ totais.valor_total | brl }}</div>
+    <div class="fin-label">{{ totais.total or 0 }} locações consideradas</div>
   </div>
   <div class="fin-card verde">
     <span class="fin-card-label">Recebido</span>
-    <div class="fin-num">{{ "R$ {:,.2f}".format(totais.valor_pago or 0).replace(",", "X").replace(".", ",").replace("X", ".") }}</div>
+    <div class="fin-num">{{ totais.valor_pago | brl }}</div>
     <div class="fin-label">{{ totais.pagos or 0 }} pagamento(s) confirmado(s)</div>
   </div>
   <div class="fin-card vermelho">
     <span class="fin-card-label">A receber</span>
-    <div class="fin-num">{{ "R$ {:,.2f}".format(totais.valor_pendente or 0).replace(",", "X").replace(".", ",").replace("X", ".") }}</div>
-    <div class="fin-label">{{ totais.pendentes or 0 }} pendencia(s)</div>
+    <div class="fin-num">{{ totais.valor_pendente | brl }}</div>
+    <div class="fin-label">{{ totais.pendentes or 0 }} pendência(s)</div>
   </div>
   <div class="fin-card alerta">
     <span class="fin-card-label">Vencido</span>
-    <div class="fin-num">{{ "R$ {:,.2f}".format(totais.valor_vencido or 0).replace(",", "X").replace(".", ",").replace("X", ".") }}</div>
+    <div class="fin-num">{{ totais.valor_vencido | brl }}</div>
     <div class="fin-label">{{ totais.vencidos or 0 }} item(ns) atrasado(s)</div>
   </div>
 </div>
@@ -42,18 +42,18 @@
   <section class="card finance-panel">
     <div class="finance-panel-head">
       <div>
-        <h3 class="card-title">Distribuicao por status</h3>
+        <h3 class="card-title">Distribuição por status</h3>
         <p class="muted">Valores agrupados por etapa operacional.</p>
       </div>
-      <span class="ticket-pill">Ticket medio: {{ "R$ {:,.2f}".format(ticket_medio or 0).replace(",", "X").replace(".", ",").replace("X", ".") }}</span>
+      <span class="ticket-pill">Ticket médio: {{ ticket_medio | brl }}</span>
     </div>
     <div class="finance-bars">
       {% set total_valor = totais.valor_total or 1 %}
       {% for item in por_status %}
       <div class="finance-bar-row">
         <div class="finance-bar-info">
-          <strong>{{ item.status.replace('_',' ') }}</strong>
-          <span>{{ item.qtd }} pedido(s) - {{ "R$ {:,.2f}".format(item.valor or 0).replace(",", "X").replace(".", ",").replace("X", ".") }}</span>
+          <strong>{{ item.status | status_label }}</strong>
+          <span>{{ item.qtd }} pedido(s) — {{ item.valor | brl }}</span>
         </div>
         <div class="finance-bar-track">
           <span style="width: {{ ((item.valor or 0) / total_valor * 100)|round(0, 'floor') }}%"></span>
@@ -68,19 +68,19 @@
   <section class="card finance-panel">
     <div class="finance-panel-head">
       <div>
-        <h3 class="card-title">Ultimos meses</h3>
-        <p class="muted">Evolucao de faturamento por mes.</p>
+        <h3 class="card-title">Últimos meses</h3>
+        <p class="muted">Evolução de faturamento por mês.</p>
       </div>
     </div>
     <div class="month-list">
       {% for mes in por_mes %}
       <div class="month-item">
         <strong>{{ mes.mes or 'Sem data' }}</strong>
-        <span>{{ mes.qtd }} locacao(oes)</span>
-        <b>{{ "R$ {:,.2f}".format(mes.valor or 0).replace(",", "X").replace(".", ",").replace("X", ".") }}</b>
+        <span>{{ mes.qtd }} locação(ões)</span>
+        <b>{{ mes.valor | brl }}</b>
       </div>
       {% else %}
-      <div class="empty-state">Sem historico financeiro.</div>
+      <div class="empty-state">Sem histórico financeiro.</div>
       {% endfor %}
     </div>
   </section>
@@ -92,25 +92,25 @@
     <a href="{{ url_for('financeiro', f='pendente') }}" class="filtro-chip {% if filtro=='pendente' %}ativo{% endif %}">A receber ({{ totais.pendentes or 0 }})</a>
     <a href="{{ url_for('financeiro', f='vencido') }}" class="filtro-chip {% if filtro=='vencido' %}ativo{% endif %}">Vencidos ({{ totais.vencidos or 0 }})</a>
     <a href="{{ url_for('financeiro', f='pago') }}" class="filtro-chip {% if filtro=='pago' %}ativo ok{% endif %}">Pagos ({{ totais.pagos or 0 }})</a>
-    <a href="{{ url_for('financeiro', f='mes') }}" class="filtro-chip {% if filtro=='mes' %}ativo{% endif %}">Mes atual</a>
+    <a href="{{ url_for('financeiro', f='mes') }}" class="filtro-chip {% if filtro=='mes' %}ativo{% endif %}">Mês atual</a>
 
     {% if filtro %}<input type="hidden" name="f" value="{{ filtro }}">{% endif %}
-    <input type="date" name="ini" value="{{ data_ini }}" title="Inicio">
+    <input type="date" name="ini" value="{{ data_ini }}" title="Início">
     <input type="date" name="fim" value="{{ data_fim }}" title="Fim">
-    <input type="search" name="q" value="{{ busca }}" placeholder="Buscar cliente, telefone, OS ou endereco..." class="busca-inline">
+    <input type="search" name="q" value="{{ busca }}" placeholder="Buscar cliente, telefone, OS ou endereço…" class="busca-inline">
     <button class="btn btn-sm" type="submit">Filtrar</button>
   </form>
 
   {% if pedidos %}
   <table class="tabela-dados">
     <thead>
-      <tr><th>#</th><th>Cliente</th><th>Obra</th><th>Valor</th><th>Periodo</th><th>Status</th><th>Pagamento</th><th>Acoes</th></tr>
+      <tr><th>#</th><th>Cliente</th><th>Obra</th><th>Valor</th><th>Período</th><th>Status</th><th>Pagamento</th><th>Ações</th></tr>
     </thead>
     <tbody>
       {% for p in pedidos %}
       {% set venc = p.data_fim_prevista and p.data_fim_prevista < hoje and not p.pago and p.status != 'finalizado' %}
-      <tr class="{% if venc %}linha-vencida{% endif %} {% if not p.pago and p.status != 'pendente' %}linha-a-receber{% endif %}">
-        <td class="mono">#{{ p.id }}</td>
+      <tr class="linha-clicavel {% if venc %}linha-vencida{% endif %} {% if not p.pago and p.status != 'pendente' %}linha-a-receber{% endif %}" data-href="{{ url_for('pedido_detalhe', pid=p.id) }}">
+        <td class="mono"><a href="{{ url_for('pedido_detalhe', pid=p.id) }}" onclick="event.stopPropagation()">#{{ p.id }}</a></td>
         <td>
           <a class="link-cliente" href="{{ url_for('cliente_detalhe', cid=p.cliente_id) }}">{{ p.cliente_nome }}</a><br>
           <small class="muted">{{ p.telefone }}</small>
@@ -121,19 +121,19 @@
           {%- if p.obra_numero %}, n. {{ p.obra_numero }}{% endif %}
           {% if p.obra_bairro %}<br><small class="muted">{{ p.obra_bairro }}</small>{% endif %}
         </td>
-        <td><strong>{{ "R$ {:,.2f}".format(p.valor_total or 0).replace(",", "X").replace(".", ",").replace("X", ".") }}</strong></td>
+        <td><strong>{{ p.valor_total | brl }}</strong></td>
         <td>
           {% if p.status in ['cancelado','finalizado'] and p.data_fim_real %}
             {{ p.data_inicio }} a {{ p.data_fim_real }}
           {% elif p.data_inicio %}
             {{ p.data_inicio }}
-            {% if p.data_fim_prevista %}<br><small class="muted">ate {{ p.data_fim_prevista }}</small>{% endif %}
+            {% if p.data_fim_prevista %}<br><small class="muted">até {{ p.data_fim_prevista }}</small>{% endif %}
           {% else %}
             -
           {% endif %}
           {% if venc %}<br><span class="badge-vencido">vencido</span>{% endif %}
         </td>
-        <td><span class="status-chip status-{{ p.status }}">{{ p.status.replace('_',' ') }}</span></td>
+        <td><span class="status-chip status-{{ p.status }}">{{ p.status | status_label }}</span></td>
         <td>
           {% if p.pago %}
             <span class="badge-pago">Pago</span>
@@ -141,7 +141,7 @@
             <span class="badge-nao-pago">A receber</span>
           {% endif %}
         </td>
-        <td>
+        <td class="cel-acoes" onclick="event.stopPropagation()">
           <div class="row-actions">
             {% if p.pago %}
             <form class="inline-form" method="post" action="{{ url_for('pedido_desfazer_pagamento', pid=p.id) }}">
@@ -153,7 +153,7 @@
               <button class="btn-pagar">Marcar pago</button>
             </form>
             {% endif %}
-            <a class="btn btn-sec btn-sm" href="{{ url_for('cliente_detalhe', cid=p.cliente_id) }}">Cliente</a>
+            <a class="btn btn-sec btn-sm" href="{{ url_for('pedido_detalhe', pid=p.id) }}">Detalhe</a>
           </div>
         </td>
       </tr>
@@ -163,5 +163,7 @@
   {% else %}
   <div class="empty-state">Nenhum registro encontrado com os filtros selecionados.</div>
   {% endif %}
+
+  {% include '_pagination.html' %}
 </div>
 {% endblock %}

@@ -3,22 +3,23 @@
 {% block content %}
 <section class="page-head">
   <div>
-    <h2>⚠️ Reset do banco de dados</h2>
-    <p>Esta ação irá <strong>remover permanentemente</strong> todos os dados do sistema e recriar o banco com dados iniciais.</p>
+    <h2>Reset do banco de dados</h2>
+    <p>Esta ação irá <strong>remover permanentemente</strong> todos os dados e recriar o banco com dados iniciais.</p>
   </div>
 </section>
 
 <div class="card">
   <h3>Confirmação necessária</h3>
-  <p>Esta operação não pode ser desfeita. Todos os clientes, endereços, pedidos e caçambas serão removidos.</p>
-  
-  <div class="form-actions">
-    <form method="post" style="display: inline;">
-      <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza absoluta? Todos os dados serão perdidos permanentemente.')">
-        ✅ Sim, resetar tudo
-      </button>
-    </form>
-    <a class="btn btn-sec" href="{{ url_for('index') }}">← Cancelar e voltar</a>
-  </div>
+  <p>Esta operação não pode ser desfeita. Todos os clientes, endereços, pedidos, caçambas e histórico serão removidos.</p>
+  <form method="post">
+    <div style="margin:1rem 0">
+      <label for="confirmacao">Digite <strong>RESETAR</strong> para confirmar</label>
+      <input id="confirmacao" name="confirmacao" required autocomplete="off" placeholder="RESETAR" style="margin-top:.4rem;max-width:200px">
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-danger">Apagar tudo e recriar</button>
+      <a class="btn btn-sec" href="{{ url_for('index') }}">Cancelar</a>
+    </div>
+  </form>
 </div>
 {% endblock %}

@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}Pedido #{{ p.id }}{% endblock %}
+{% block topbar_title %}Pedido #{{ p.id }}{% endblock %}
+{% block breadcrumbs %}
+  <a href="{{ url_for('index') }}">Dashboard</a>
+  <span class="separator">/</span>
+  <a href="{{ url_for('pedidos') }}">Pedidos</a>
+  <span class="separator">/</span>
+  <span class="current">#{{ p.id }}</span>
+{% endblock %}
+{% block content %}
+
+<section class="page-head">
+  <div>
+    <h2>Pedido #{{ p.id }}</h2>
+    <p>
+      <a class="link-cliente" href="{{ url_for('cliente_detalhe', cid=p.cliente_id) }}">{{ p.cliente_nome }}</a>
+      · {{ p.telefone }}
+      · <span class="status-chip status-{{ p.status }}">{{ p.status | status_label }}</span>
+      {% if vencida %}<span class="badge-vencido">prazo vencido</span>{% endif %}
+    </p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-sec" href="{{ url_for('pedidos') }}">Voltar à lista</a>
+    {% if p.status == 'no_endereco' %}
+    <button type="button" class="btn btn-sec" onclick="gerarComprovante({{ p.id }})">Comprovante</button>
+    {% endif %}
+  </div>
+</section>
+
+<div class="detalhe-pedido-grid">
+  <div class="card">
+    <h3 class="card-title">Resumo</h3>
+    <div class="detalhe-grid">
+      <div>
+        <span class="detalhe-label">Valor da locação</span>
+        <span class="detalhe-val"><strong>{{ p.valor_total | brl }}</strong></span>
+      </div>
+      <div>
+        <span class="detalhe-label">Pagamento</span>
+        <span class="detalhe-val">
+          {% if p.pago %}<span class="badge-pago">Pago</span>{% else %}<span class="badge-nao-pago">Pendente</span>{% endif %}
+        </span>
+      </div>
+      <div>
+        <span class="detalhe-label">Capacidade</span>
+        <span class="detalhe-val">{{ p.capacidade_m3 }} m³</span>
+      </div>
+      <div>
+        <span class="detalhe-label">Caçamba</span>
+        <span class="detalhe-val">{{ p.cacamba_codigo or '—' }}</span>
+      </div>
+      <div>
+        <span class="detalhe-label">Início / retirada prevista</span>
+        <span class="detalhe-val">{{ p.data_inicio or 'Aguardando entrega' }}{% if p.data_fim_prevista %} → {{ p.data_fim_prevista }}{% endif %}</span>
+      </div>
+      {% if p.data_fim_real %}
+      <div>
+        <span class="detalhe-label">Encerramento</span>
+        <span class="detalhe-val">{{ p.data_fim_real }}</span>
+      </div>
+      {% endif %}
+      {% if p.motorista_entrega %}
+      <div>
+        <span class="detalhe-label">Entrega</span>
+        <span class="detalhe-val">{{ p.motorista_entrega }}</span>
+      </div>
+      {% endif %}
+      {% if p.motorista_retirada %}
+      <div>
+        <span class="detalhe-label">Retirada</span>
+        <span class="detalhe-val">{{ p.motorista_retirada }}</span>
+      </div>
+      {% endif %}
+      {% if p.status == 'no_endereco' and p.data_inicio %}
+      <div style="grid-column:1/-1">
+        <span class="detalhe-label">Tempo no local</span>
+        <span class="detalhe-val">
+          <span class="dias-no-local-badge" data-inicio="{{ p.data_inicio }}" data-prazo="{{ dias_locacao|default(7) }}"></span>
+        </span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">Endereço da obra</h3>
+    <p class="detalhe-endereco">
+      {% if p.obra_cep and p.obra_cep|length >= 8 %}<span class="mono">{{ p.obra_cep[0:5] }}-{{ p.obra_cep[5:9] }}</span><br>{% endif %}
+      <strong>{{ p.obra_rua or p.endereco_obra or '—' }}</strong>
+      {%- if p.obra_numero %}, nº {{ p.obra_numero }}{% endif %}
+      {%- if p.obra_quadra %} · Q.{{ p.obra_quadra }}{% endif %}
+      {% if p.obra_bairro %}<br><span class="muted">{{ p.obra_bairro }}</span>{% endif %}
+    </p>
+    {% if p.obra_rua %}
+    <a class="btn btn-sm btn-sec" target="_blank" rel="noopener"
+       href="https://www.google.com/maps/search/?api=1&query={{ (p.obra_rua ~ ', ' ~ (p.obra_numero or '') ~ ', ' ~ (p.obra_bairro or '') ~ ', Bauru SP') | urlencode }}">
+      Abrir no mapa
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h3 class="card-title">Observações</h3>
+  <form method="post" action="{{ url_for('pedido_observacao', pid=p.id) }}" data-loading>
+    <textarea name="observacoes" rows="3" placeholder="Anotações internas sobre este pedido…">{{ p.observacoes or '' }}</textarea>
+    <div class="form-actions" style="margin-top:.5rem">
+      <button type="submit" class="btn btn-sm">Salvar observação</button>
+    </div>
+  </form>
+</div>
+
+{% if p.status in ['pendente', 'confirmado', 'no_endereco'] or (not p.pago and p.status not in ['pendente', 'cancelado']) %}
+<div class="card">
+  <h3 class="card-title">Ações</h3>
+  <div class="row-actions detalhe-acoes">
+    {% if p.status == 'pendente' %}
+    <form class="inline-form" method="post" action="{{ url_for('pedido_confirmar', pid=p.id) }}" data-loading>
+      <button class="btn btn-ok">Confirmar pedido</button>
+    </form>
+    <form class="inline-form" method="post" action="{{ url_for('pedido_cancelar', pid=p.id) }}" data-loading
+          onsubmit="return confirm('Cancelar esta solicitação?')">
+      <button class="btn btn-sec">Cancelar</button>
+    </form>
+    {% elif p.status == 'confirmado' %}
+    <form class="form-entrega" method="post" action="{{ url_for('pedido_entregar', pid=p.id) }}" data-loading>
+      <select name="cacamba_id" required class="select-cacamba" data-cap="{{ p.capacidade_m3 }}"><option value="">Caçamba…</option></select>
+      <select name="motorista_entrega" required>
+        <option value="">Motorista</option>
+        {% for m in motoristas %}<option value="{{ m }}">{{ m }}</option>{% endfor %}
+      </select>
+      <button class="btn btn-alerta">Registrar entrega</button>
+    </form>
+  <form class="inline-form" method="post" action="{{ url_for('pedido_cancelar', pid=p.id) }}" data-loading
+        onsubmit="return confirm('Cancelar pedido confirmado?')">
+      <button class="btn btn-sec">Cancelar</button>
+    </form>
+    {% elif p.status == 'no_endereco' %}
+    <form class="form-retirada" method="post" action="{{ url_for('pedido_finalizar', pid=p.id) }}" data-loading>
+      <select name="motorista_retirada" required>
+        <option value="">Motorista retirada</option>
+        {% for m in motoristas %}<option value="{{ m }}">{{ m }}</option>{% endfor %}
+      </select>
+      <input type="date" name="data_retirada" value="{{ hoje }}" required max="{{ hoje }}">
+      <button class="btn btn-alerta">Registrar retirada</button>
+    </form>
+    <details class="troca-details">
+      <summary class="btn btn-sm" style="cursor:pointer;list-style:none">Trocar caçamba</summary>
+      <form class="form-troca" method="post" action="{{ url_for('pedido_trocar', pid=p.id) }}" data-loading style="margin-top:.5rem;display:flex;gap:.4rem;flex-wrap:wrap">
+        <select name="cacamba_id" required class="select-cacamba" data-cap="{{ p.capacidade_m3 }}"><option value="">Nova caçamba…</option></select>
+        <select name="motorista_retirada" required><option value="">Motorista</option>{% for m in motoristas %}<option value="{{ m }}">{{ m }}</option>{% endfor %}</select>
+        <button class="btn btn-ok btn-sm" onclick="return confirm('Trocar caçamba e criar novo pedido?')">Confirmar troca</button>
+      </form>
+    </details>
+    <form class="inline-form" method="post" action="{{ url_for('pedido_cancelar', pid=p.id) }}" data-loading
+          onsubmit="return confirm('Cancelar pedido e liberar a caçamba?')">
+      <button class="btn btn-sec">Cancelar</button>
+    </form>
+    {% endif %}
+    {% if not p.pago and p.status not in ['pendente', 'cancelado'] %}
+    <form class="inline-form" method="post" action="{{ url_for('pedido_pagar', pid=p.id) }}" data-loading>
+      <button class="btn-pagar">Marcar como pago</button>
+    </form>
+    {% elif p.pago %}
+    <form class="inline-form" method="post" action="{{ url_for('pedido_desfazer_pagamento', pid=p.id) }}" data-loading>
+      <button class="btn btn-sec btn-sm">Desfazer pagamento</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3 class="card-title">Histórico</h3>
+  {% if historico %}
+  <ul class="timeline">
+    {% for h in historico %}
+    <li class="timeline-item">
+      <span class="timeline-dot"></span>
+      <div class="timeline-body">
+        <strong>{{ h.acao | replace('_', ' ') | title }}</strong>
+        {% if h.detalhes %}<p class="muted">{{ h.detalhes }}</p>{% endif %}
+        <time class="timeline-time">{{ h.created_at }}</time>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted hint">Nenhum evento registrado ainda.</p>
+  {% endif %}
+</div>
+
+{% include '_modal_comprovante.html' %}
+{% endblock %}

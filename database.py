@@ -1,9 +1,18 @@
 # -*- coding: utf-8 -*-
+import os
 import sqlite3
 import unicodedata
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent / "cacambas.db"
+DB_PATH = Path(os.environ.get("DB_PATH", Path(__file__).resolve().parent / "cacambas.db"))
+DEFAULT_MOTORISTAS = ("Roberto", "Cicero")
+DEFAULT_CONFIG = (
+    ("empresa_nome", "Caçambas Bauru"),
+    ("empresa_fone", ""),
+    ("dias_locacao", "7"),
+    ("valor_locacao_3m3", "300"),
+    ("valor_locacao_4m3", "330"),
+)
 CAPACIDADES_M3 = (3, 4)
 VALORES_LOCACAO = {3: 300.00, 4: 330.00}  # Valores por m³
 
@@ -182,6 +191,32 @@ def _migrate(conn):
     conn.execute("CREATE TABLE IF NOT EXISTS motoristas (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL UNIQUE)")
     conn.execute("CREATE TABLE IF NOT EXISTS config (chave TEXT PRIMARY KEY, valor TEXT NOT NULL DEFAULT '')")
     
+    conn.execute(
+        """UPDATE pedidos SET valor_total = CASE capacidade_m3
+               WHEN 3 THEN ? WHEN 4 THEN ? ELSE valor_total END
+           WHERE valor_total IS NULL OR valor_total = 0""",
+        (VALORES_LOCACAO[3], VALORES_LOCACAO[4]),
+    )
+    if conn.execute("SELECT COUNT(*) FROM motoristas").fetchone()[0] == 0:
+        conn.executemany(
+            "INSERT INTO motoristas (nome) VALUES (?)",
+            [(n,) for n in DEFAULT_MOTORISTAS],
+        )
+    if conn.execute("SELECT COUNT(*) FROM config").fetchone()[0] == 0:
+        for chave, valor in DEFAULT_CONFIG:
+            conn.execute(
+                "INSERT OR REPLACE INTO config (chave, valor) VALUES (?, ?)",
+                (chave, valor),
+            )
+    else:
+        for chave, valor in DEFAULT_CONFIG:
+            if chave.startswith("valor_locacao_"):
+                if not conn.execute("SELECT 1 FROM config WHERE chave=?", (chave,)).fetchone():
+                    conn.execute(
+                        "INSERT INTO config (chave, valor) VALUES (?, ?)",
+                        (chave, valor),
+                    )
+
     # historico_pedidos
     conn.execute("""CREATE TABLE IF NOT EXISTS historico_pedidos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -198,7 +233,18 @@ def seed_if_empty():
     if conn.execute("SELECT COUNT(*) FROM cacambas").fetchone()[0] == 0:
         conn.executemany(
             "INSERT INTO cacambas (codigo,capacidade_m3,status) VALUES (?,?,'disponivel')",
-            [("1",3),("2",4),("3",3),("4",4),("5",3)]
+            [("1", 3), ("2", 4), ("3", 3), ("4", 4), ("5", 3)],
         )
-        conn.commit()
+    if conn.execute("SELECT COUNT(*) FROM motoristas").fetchone()[0] == 0:
+        conn.executemany(
+            "INSERT INTO motoristas (nome) VALUES (?)",
+            [(n,) for n in DEFAULT_MOTORISTAS],
+        )
+    if conn.execute("SELECT COUNT(*) FROM config").fetchone()[0] == 0:
+        for chave, valor in DEFAULT_CONFIG:
+            conn.execute(
+                "INSERT OR REPLACE INTO config (chave, valor) VALUES (?, ?)",
+                (chave, valor),
+            )
+    conn.commit()
     conn.close()

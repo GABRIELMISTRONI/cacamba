@@ -3,30 +3,30 @@
 {% block topbar_title %}Dashboard{% endblock %}
 {% block content %}
 
-<div class="hero-banner">
+<div class="hero-banner no-image">
   <div class="hero-texto">
     <span class="hero-kicker">Central operacional</span>
-    <h2>Cacambas Bauru/SP</h2>
-    <p>Gestao completa de clientes, frota, locacoes, operacoes de campo e financeiro em uma unica rotina de trabalho.</p>
+    <h2>Caçambas Bauru/SP</h2>
+    <p>Gestão completa de clientes, frota, locações, operações de campo e financeiro em uma única rotina de trabalho.</p>
     <div class="hero-acoes">
-      <a class="btn btn-hero" href="{{ url_for('pedido_novo') }}"><svg class="erp-icon"><use href="#i-orders"></use></svg> Nova locacao</a>
-      <a class="btn btn-hero-sec" href="{{ url_for('operacoes') }}"><svg class="erp-icon"><use href="#i-truck"></use></svg> Operacoes do dia</a>
+      <a class="btn btn-hero" href="{{ url_for('pedido_novo') }}"><svg class="erp-icon"><use href="#i-orders"></use></svg> Nova locação</a>
+      <a class="btn btn-hero-sec" href="{{ url_for('operacoes') }}"><svg class="erp-icon"><use href="#i-truck"></use></svg> Operações do dia</a>
       <a class="btn btn-hero-sec" href="{{ url_for('mapa') }}"><svg class="erp-icon"><use href="#i-map"></use></svg> Ver mapa</a>
     </div>
   </div>
-  <img src="{{ url_for('static', filename='images/hero-cacambas.png') }}" alt="">
+  <div class="hero-visual" aria-hidden="true"></div>
 </div>
 
 {% if stats.retiradas_vencidas or vencendo_amanha %}
 <div class="alertas-banner">
   {% if stats.retiradas_vencidas %}
   <a href="{{ url_for('operacoes', f='atrasadas') }}" class="alerta-item alerta-danger">
-    {{ stats.retiradas_vencidas }} cacamba(s) com prazo <strong>vencido</strong> - clique para ver
+    {{ stats.retiradas_vencidas }} caçamba(s) com prazo <strong>vencido</strong> — clique para ver
   </a>
   {% endif %}
   {% if vencendo_amanha %}
   <a href="{{ url_for('operacoes', f='amanha') }}" class="alerta-item alerta-warn">
-    {{ vencendo_amanha }} cacamba(s) vencem <strong>amanha</strong> - planejar retirada
+    {{ vencendo_amanha }} caçamba(s) vencem <strong>amanhã</strong> — planejar retirada
   </a>
   {% endif %}
 </div>
@@ -35,11 +35,11 @@
 <div class="stats-grid">
   <div class="stat-card verde">
     <div class="stat-num">{{ stats.disponiveis }}</div>
-    <div class="stat-label">Cacambas disponiveis</div>
+    <div class="stat-label">Caçambas disponíveis</div>
   </div>
   <div class="stat-card laranja">
     <div class="stat-num">{{ stats.em_uso }}</div>
-    <div class="stat-label">Cacambas em uso</div>
+    <div class="stat-label">Caçambas em uso</div>
   </div>
   <div class="stat-card azul">
     <div class="stat-num">{{ stats.pedidos_abertos }}</div>
@@ -51,6 +51,46 @@
   </div>
 </div>
 
+{% if stats.total_frota %}
+<div class="card ocupacao-frota-card">
+  <div class="ocupacao-header">
+    <span class="ocupacao-label">Taxa de ocupação da frota</span>
+    <span class="ocupacao-valor {% if stats.taxa_ocupacao >= 90 %}ocupacao-alta{% elif stats.taxa_ocupacao >= 60 %}ocupacao-media{% else %}ocupacao-baixa{% endif %}">{{ stats.taxa_ocupacao }}%</span>
+  </div>
+  <div class="ocupacao-barra-wrap">
+    <div class="ocupacao-barra-em-uso" style="width:{{ (stats.em_uso / stats.total_frota * 100)|round(1) }}%" title="{{ stats.em_uso }} em uso"></div>
+    {% if stats.manutencao %}
+    <div class="ocupacao-barra-manut" style="width:{{ (stats.manutencao / stats.total_frota * 100)|round(1) }}%" title="{{ stats.manutencao }} em manutenção"></div>
+    {% endif %}
+  </div>
+  <div class="ocupacao-legenda">
+    <span class="ocup-item em-uso">{{ stats.em_uso }} em uso</span>
+    <span class="ocup-item disponivel">{{ stats.disponiveis }} disponíve{{ 'l' if stats.disponiveis == 1 else 'is' }}</span>
+    {% if stats.manutencao %}<span class="ocup-item manut">{{ stats.manutencao }} em manutenção</span>{% endif %}
+    <span class="ocup-item total">{{ stats.total_frota }} total</span>
+  </div>
+</div>
+{% endif %}
+
+<div class="stats-grid stats-grid-finance">
+  <a href="{{ url_for('financeiro', f='pendente') }}" class="stat-card vermelho stat-card-link">
+    <div class="stat-num stat-num-sm">{{ stats.valor_a_receber | brl }}</div>
+    <div class="stat-label">A receber · {{ stats.a_receber }} pedido(s)</div>
+  </a>
+  <a href="{{ url_for('operacoes', f='entregar') }}" class="stat-card azul stat-card-link">
+    <div class="stat-num">{{ stats.entregas_hoje }}</div>
+    <div class="stat-label">Aguardando entrega</div>
+  </a>
+  <a href="{{ url_for('pedidos', s='pendente') }}" class="stat-card stat-card-link">
+    <div class="stat-num">{{ stats.pendentes }}</div>
+    <div class="stat-label">Solicitações pendentes</div>
+  </a>
+  <a href="{{ url_for('financeiro', f='pago') }}" class="stat-card verde stat-card-link">
+    <div class="stat-num stat-num-sm">{{ stats.valor_recebido_mes | brl }}</div>
+    <div class="stat-label">Valor já recebido</div>
+  </a>
+</div>
+
 <div class="card table-wrap">
   <div class="card-head-row" style="padding:1rem 1.25rem .5rem">
     <h3 class="card-title">Pedidos recentes</h3>
@@ -59,20 +99,20 @@
   {% if ultimos %}
   <table class="tabela-dados">
     <thead>
-      <tr><th>#</th><th>Cliente</th><th>Endereco da obra</th><th>Tam.</th><th>Status</th><th>Retirada</th><th>Pagto.</th></tr>
+      <tr><th>#</th><th>Cliente</th><th>Endereço da obra</th><th>Tam.</th><th>Status</th><th>Retirada</th><th>Pagto.</th></tr>
     </thead>
     <tbody>
       {% for p in ultimos %}
       {% set vencida = p.data_fim_prevista and p.data_fim_prevista < hoje and p.status != 'finalizado' %}
-      <tr class="linha-clicavel {% if vencida %}linha-vencida{% endif %}" onclick="location.href='{{ url_for('pedidos') }}'">
-        <td class="mono">#{{ p.id }}</td>
+      <tr class="linha-clicavel {% if vencida %}linha-vencida{% endif %}" data-href="{{ url_for('pedido_detalhe', pid=p.id) }}">
+        <td class="mono"><a href="{{ url_for('pedido_detalhe', pid=p.id) }}" onclick="event.stopPropagation()">#{{ p.id }}</a></td>
         <td><strong>{{ p.cliente_nome }}</strong></td>
         <td class="cel-obra">
           {{ p.obra_rua or p.endereco_obra or '-' }}{% if p.obra_numero %}, n. {{ p.obra_numero }}{% endif %}
           {% if p.obra_bairro %}<br><small class="muted">{{ p.obra_bairro }}</small>{% endif %}
         </td>
-        <td>{{ p.capacidade_m3 }} m3</td>
-        <td><span class="status-chip status-{{ p.status }}">{{ p.status.replace('_',' ') }}</span></td>
+        <td>{{ p.capacidade_m3 }} m³</td>
+        <td><span class="status-chip status-{{ p.status }}">{{ p.status | status_label }}</span></td>
         <td>
           {% if p.status in ['cancelado','finalizado'] and p.data_fim_real %}
             {{ p.data_inicio }} a {{ p.data_fim_real }}
@@ -87,7 +127,37 @@
     </tbody>
   </table>
   {% else %}
-  <div class="empty-state">Nenhuma solicitacao ainda. <a href="{{ url_for('pedido_novo') }}">Criar primeiro pedido</a></div>
+  <div class="empty-state">Nenhuma solicitação ainda. <a href="{{ url_for('pedido_novo') }}">Criar primeiro pedido</a></div>
   {% endif %}
 </div>
+
+{% if por_mes %}
+<div class="card" style="padding:1.25rem">
+  <div class="card-head-row" style="margin-bottom:1rem">
+    <h3 class="card-title">Receita mensal</h3>
+    <a class="btn btn-sec btn-sm" href="{{ url_for('financeiro') }}">Ver financeiro</a>
+  </div>
+  <div class="grafico-barras-wrap">
+    {% set max_val = por_mes | map(attribute='valor_total') | max %}
+    {% for m in por_mes %}
+    {% set pct = ((m.valor_total / max_val * 100) | round(0, 'floor')) if max_val > 0 else 0 %}
+    {% set pct_pago = ((m.valor_pago / max_val * 100) | round(0, 'floor')) if max_val > 0 else 0 %}
+    <div class="grafico-col">
+      <div class="grafico-val">R${{ (m.valor_total / 1000) | round(1) }}k</div>
+      <div class="grafico-bar-wrap">
+        <div class="grafico-bar-total" style="height:{{ pct }}%" title="Total: R$ {{ m.valor_total | round(2) }}">
+          <div class="grafico-bar-pago" style="height:{{ ((m.valor_pago / m.valor_total * 100) | round(0,'floor') if m.valor_total > 0 else 0) }}%" title="Recebido: R$ {{ m.valor_pago | round(2) }}"></div>
+        </div>
+      </div>
+      <div class="grafico-label">{{ m.mes[5:7] }}/{{ m.mes[2:4] }}</div>
+      <div class="grafico-sub">{{ m.qtd }} pedido{{ 's' if m.qtd != 1 else '' }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="grafico-legenda">
+    <span class="grafico-legenda-item pago">Recebido</span>
+    <span class="grafico-legenda-item pendente">Pendente</span>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

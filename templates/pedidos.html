@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Pedidos{% endblock %}
 {% block topbar_title %}Pedidos{% endblock %}
-{% block topbar_actions %}<a class="btn btn-sm" href="{{ url_for('pedido_novo') }}">+ Nova solicitação</a>{% endblock %}
+{% block topbar_actions %}<a class="btn btn-sm btn-sec" href="{{ url_for('pedidos', s=filtro_status, p=filtro_pago, q=busca, ini=data_ini, fim=data_fim, export='csv') }}">Exportar CSV</a> <a class="btn btn-sm" href="{{ url_for('pedido_novo') }}">+ Nova solicitação</a>{% endblock %}
 {% block content %}
 <section class="page-head">
   <div>
@@ -14,20 +14,29 @@
 <div class="card table-wrap">
   <div class="filtros-bar">
     <a href="{{ url_for('pedidos') }}" class="filtro-chip {% if not filtro_status and not filtro_pago %}ativo{% endif %}">Todos ({{ total }})</a>
-    <a href="{{ url_for('pedidos', s='pendente') }}" class="filtro-chip {% if filtro_status=='pendente' %}ativo{% endif %}">⏳ Pendentes</a>
-    <a href="{{ url_for('pedidos', s='confirmado') }}" class="filtro-chip {% if filtro_status=='confirmado' %}ativo{% endif %}">✅ Confirmados</a>
-    <a href="{{ url_for('pedidos', s='no_endereco') }}" class="filtro-chip {% if filtro_status=='no_endereco' %}ativo{% endif %}">🚚 No endereço</a>
-    <a href="{{ url_for('pedidos', s='finalizado') }}" class="filtro-chip {% if filtro_status=='finalizado' %}ativo{% endif %}">🏁 Finalizados</a>
+    <a href="{{ url_for('pedidos', s='pendente') }}" class="filtro-chip {% if filtro_status=='pendente' %}ativo{% endif %}">Pendentes</a>
+    <a href="{{ url_for('pedidos', s='confirmado') }}" class="filtro-chip {% if filtro_status=='confirmado' %}ativo{% endif %}">Confirmados</a>
+    <a href="{{ url_for('pedidos', s='no_endereco') }}" class="filtro-chip {% if filtro_status=='no_endereco' %}ativo{% endif %}">No endereço</a>
+    <a href="{{ url_for('pedidos', s='finalizado') }}" class="filtro-chip {% if filtro_status=='finalizado' %}ativo{% endif %}">Finalizados</a>
+    <a href="{{ url_for('pedidos', s='cancelado') }}" class="filtro-chip {% if filtro_status=='cancelado' %}ativo{% endif %}">Cancelados</a>
     <span style="width:1px;background:var(--line);margin:0 .1rem;height:22px;display:inline-block;flex-shrink:0"></span>
-    <a href="{{ url_for('pedidos', p='0') }}" class="filtro-chip {% if filtro_pago=='0' %}ativo{% endif %}">💸 Não pagos</a>
-    <a href="{{ url_for('pedidos', p='1') }}" class="filtro-chip {% if filtro_pago=='1' %}ativo ok{% endif %}">✓ Pagos</a>
-    <form method="get" action="{{ url_for('pedidos') }}" style="margin-left:auto">
+    <a href="{{ url_for('pedidos', p='0') }}" class="filtro-chip {% if filtro_pago=='0' %}ativo{% endif %}">Não pagos</a>
+    <a href="{{ url_for('pedidos', p='1') }}" class="filtro-chip {% if filtro_pago=='1' %}ativo ok{% endif %}">Pagos</a>
+    <form method="get" action="{{ url_for('pedidos') }}" style="margin-left:auto;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
       {% if filtro_status %}<input type="hidden" name="s" value="{{ filtro_status }}">{% endif %}
       {% if filtro_pago %}<input type="hidden" name="p" value="{{ filtro_pago }}">{% endif %}
-      <div class="busca-wrap" style="position:relative;margin-left:auto">
+      <div class="filtro-datas-wrap">
+        <input type="date" name="ini" value="{{ data_ini }}" class="input-data-filtro" title="Data início" max="{{ hoje }}">
+        <span class="filtro-datas-sep">até</span>
+        <input type="date" name="fim" value="{{ data_fim }}" class="input-data-filtro" title="Data fim" max="{{ hoje }}">
+        {% if data_ini or data_fim %}
+        <a href="{{ url_for('pedidos', s=filtro_status, p=filtro_pago, q=busca) }}" class="btn-limpar-datas" title="Limpar datas">✕</a>
+        {% endif %}
+      </div>
+      <div class="busca-wrap" style="position:relative">
         <input type="search" name="q" id="busca-pedidos" value="{{ busca }}" 
                placeholder="Buscar cliente ou endereço…" class="busca-inline" 
-               autocomplete="off" style="width:280px">
+               autocomplete="off" style="width:240px">
         <ul id="busca-dropdown" class="busca-dropdown" style="display:none"></ul>
       </div>
     </form>
@@ -41,8 +50,8 @@
     <tbody>
       {% for p in pedidos %}
       {% set vencida = p.data_fim_prevista and p.data_fim_prevista < hoje and p.status not in ['finalizado'] %}
-      <tr class="{% if vencida %}linha-vencida{% endif %}">
-        <td class="mono">#{{ p.id }}</td>
+      <tr class="linha-clicavel {% if vencida %}linha-vencida{% endif %}" data-href="{{ url_for('pedido_detalhe', pid=p.id) }}">
+        <td class="mono"><a href="{{ url_for('pedido_detalhe', pid=p.id) }}" onclick="event.stopPropagation()">#{{ p.id }}</a></td>
         <td>
           <a class="link-cliente" href="{{ url_for('cliente_detalhe', cid=p.cliente_id) }}">{{ p.cliente_nome }}</a><br>
           <small class="muted">{{ p.telefone }}</small>
@@ -51,7 +60,7 @@
           {% if p.obra_cep and p.obra_cep|length >= 8 %}<span class="mono" style="font-size:.78em">{{ p.obra_cep[0:5] }}-{{ p.obra_cep[5:9] }}</span><br>{% endif %}
           <strong>{{ p.obra_rua or p.endereco_obra or '—' }}</strong>
           {%- if p.obra_numero %}, nº {{ p.obra_numero }}{% endif %}
-          {% if p.obra_quadra %}<br><span class="quadra-tag">🟧 Q.{{ p.obra_quadra }}</span>{% endif %}
+          {% if p.obra_quadra %}<br><span class="quadra-tag">Q.{{ p.obra_quadra }}</span>{% endif %}
           {% if p.obra_bairro %}<br><small class="muted">{{ p.obra_bairro }}</small>{% endif %}
         </td>
         <td><strong>{{ p.capacidade_m3 }} m³</strong></td>
@@ -61,25 +70,29 @@
           {% if p.status == 'no_endereco' and p.data_inicio %}
             {% set dias = ((hoje | string)[:10] | length) %}
             {# calcula dias no local via Jinja string trick não funciona, usar classe CSS com data attr #}
-            <span class="dias-no-local-badge" data-inicio="{{ p.data_inicio }}" data-prazo="{{ dias_locacao }}"></span>
+            <span class="dias-no-local-badge" data-inicio="{{ p.data_inicio }}" data-prazo="{{ dias_locacao|default(7) }}"></span>
           {% endif %}
           {% if vencida %}<span class="badge-vencido">vencida</span>{% endif %}
         </td>
         <td>{{ p.cacamba_codigo or '—' }}</td>
         <td>
-          <span class="status-chip status-{{ p.status }}">{{ p.status.replace('_',' ') }}</span>
+          <span class="status-chip status-{{ p.status }}">{{ p.status | status_label }}</span>
           {% if p.motorista_entrega %}<br><small class="muted">Entregue: {{ p.motorista_entrega }}</small>{% endif %}
           {% if p.motorista_retirada %}<br><small class="muted">Retirada: {{ p.motorista_retirada }}</small>{% endif %}
         </td>
         <td>
-          {% if p.pago %}<span class="badge-pago">✓ Pago</span>
+          {% if p.pago %}<span class="badge-pago">Pago</span>
           {% else %}<span class="badge-nao-pago">Pendente</span>{% endif %}
         </td>
-        <td>
+        <td class="cel-acoes" onclick="event.stopPropagation()">
           <div class="row-actions">
             {% if p.status == 'pendente' %}
             <form class="inline-form" method="post" action="{{ url_for('pedido_confirmar', pid=p.id) }}">
               <button class="btn btn-ok btn-sm">Confirmar</button>
+            </form>
+            <form class="inline-form" method="post" action="{{ url_for('pedido_cancelar', pid=p.id) }}"
+                  onsubmit="return confirm('Cancelar esta solicitação?')">
+              <button class="btn btn-sec btn-sm">Cancelar</button>
             </form>
             {% elif p.status == 'confirmado' %}
             <form class="form-entrega" method="post" action="{{ url_for('pedido_entregar', pid=p.id) }}">
@@ -88,38 +101,39 @@
                 <option value="">Motorista</option>
                 {% for m in motoristas %}<option value="{{ m }}">{{ m }}</option>{% endfor %}
               </select>
-              <button class="btn btn-alerta btn-sm">🚚 Entregar</button>
+              <button class="btn btn-alerta btn-sm">Entregar</button>
             </form>
-            {% endif %}
-            {% if p.status in ['confirmado','no_endereco'] %}
+            <form class="inline-form" method="post" action="{{ url_for('pedido_cancelar', pid=p.id) }}"
+                  onsubmit="return confirm('Cancelar pedido confirmado?')">
+              <button class="btn btn-sec btn-sm">Cancelar</button>
+            </form>
+            {% elif p.status == 'no_endereco' %}
             <form class="form-retirada" method="post" action="{{ url_for('pedido_finalizar', pid=p.id) }}">
               <select name="motorista_retirada" required>
                 <option value="">Motorista retirada</option>
-                {% for m in motoristas %}<option>{{ m }}</option>{% endfor %}
+                {% for m in motoristas %}<option value="{{ m }}">{{ m }}</option>{% endfor %}
               </select>
               <input type="date" name="data_retirada" value="{{ hoje }}" required max="{{ hoje }}">
-              <button class="btn btn-alerta btn-sm">↩ Finalizar</button>
+              <button class="btn btn-alerta btn-sm">Registrar retirada</button>
             </form>
-            {% if p.status == 'no_endereco' %}
             <details class="troca-details">
-              <summary class="btn btn-sm" style="cursor:pointer;list-style:none">🔄 Trocar</summary>
+              <summary class="btn btn-sm" style="cursor:pointer;list-style:none">Trocar</summary>
               <form class="form-troca" method="post" action="{{ url_for('pedido_trocar', pid=p.id) }}" style="margin-top:.4rem;display:flex;gap:.3rem;flex-wrap:wrap">
                 <select name="cacamba_id" required class="select-cacamba" data-cap="{{ p.capacidade_m3 }}"><option value="">Caçamba…</option></select>
-                <select name="motorista_retirada" required><option value="">Motorista</option>{% for m in motoristas %}<option>{{ m }}</option>{% endfor %}</select>
-                <button class="btn btn-ok btn-sm" onclick="return confirm('Trocar caçamba e criar novo pedido?')">✓ Trocar</button>
+                <select name="motorista_retirada" required><option value="">Motorista</option>{% for m in motoristas %}<option value="{{ m }}">{{ m }}</option>{% endfor %}</select>
+                <button class="btn btn-ok btn-sm" onclick="return confirm('Trocar caçamba e criar novo pedido?')">Confirmar troca</button>
               </form>
             </details>
-            <button class="btn btn-sm btn-sec" onclick="gerarComprovante({{ p.id }})">📄</button>
-            {% endif %}
+            <button class="btn btn-sm btn-sec" onclick="gerarComprovante({{ p.id }})">Comprovante</button>
             <form class="inline-form" method="post" action="{{ url_for('pedido_cancelar', pid=p.id) }}"
                   onsubmit="return confirm('Cancelar pedido e liberar a caçamba?')">
-              <button class="btn btn-sec btn-sm">❌ Cancelar</button>
+              <button class="btn btn-sec btn-sm">Cancelar</button>
             </form>
             {% endif %}
             {% if not p.pago %}
             <form class="inline-form" method="post" action="{{ url_for('pedido_pagar', pid=p.id) }}">
               <input type="hidden" name="origem" value="pedidos">
-              <button class="btn-pagar">✓ Marcar pago</button>
+              <button class="btn-pagar">Marcar pago</button>
             </form>
             {% endif %}
           </div>
@@ -131,61 +145,11 @@
   {% else %}
   <div class="empty-state">Nenhum pedido encontrado com os filtros selecionados.</div>
   {% endif %}
+
+  {% include '_pagination.html' %}
 </div>
 
-<script>
-document.querySelectorAll('.select-cacamba').forEach(function(sel) {
-  fetch('/api/cacambas-disponiveis?capacidade=' + sel.dataset.cap)
-    .then(r => r.json())
-    .then(function(data) {
-      sel.innerHTML = data.length
-        ? '<option value="">Escolha</option>' + data.map(c => '<option value="'+c.id+'">Nº '+c.codigo+' ('+c.capacidade_m3+'m³)</option>').join('')
-        : '<option value="">Sem disponível</option>';
-    }).catch(function(){ sel.innerHTML = '<option value="">Erro</option>'; });
-});
-
-// Badge dias no local
-document.querySelectorAll('.dias-no-local-badge').forEach(function(el){
-  var inicio = el.dataset.inicio;
-  if (!inicio) return;
-  var dias = Math.floor((new Date() - new Date(inicio)) / 86400000);
-  var cls  = dias >= 7 ? 'dias-vencido' : dias >= 5 ? 'dias-alerta' : dias >= 3 ? 'dias-aviso' : 'dias-ok';
-  el.className = 'dias-badge ' + cls;
-  el.textContent = dias + ' dia' + (dias !== 1 ? 's' : '');
-});
-
-// Comprovante modal
-var _waFone = '';
-function gerarComprovante(pid) {
-  fetch('/pedidos/'+pid+'/comprovante')
-    .then(r=>r.json()).then(function(d){
-      document.getElementById('comprovante-texto').value = d.texto;
-      _waFone = (d.telefone||'').replace(/\D/g,'');
-      document.getElementById('modal-comprovante').style.display = 'flex';
-    }).catch(function(){ alert('Erro ao gerar comprovante.'); });
-}
-function copiarComprovante(){
-  var ta=document.getElementById('comprovante-texto'); ta.select(); document.execCommand('copy'); alert('Copiado!');
-}
-function abrirWhatsapp(){
-  var t=encodeURIComponent(document.getElementById('comprovante-texto').value);
-  var f=_waFone?'55'+_waFone:'';
-  window.open(f?'https://wa.me/'+f+'?text='+t:'https://wa.me/?text='+t,'_blank');
-}
-</script>
-
-<!-- Modal comprovante -->
-<div id="modal-comprovante" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center">
-  <div style="background:var(--surface-color);border-radius:12px;padding:1.5rem;max-width:480px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.25)">
-    <h3 style="margin:0 0 1rem">📄 Comprovante</h3>
-    <textarea id="comprovante-texto" rows="14" style="width:100%;font-family:monospace;font-size:.82rem;border:1px solid var(--line);border-radius:6px;padding:.75rem;background:var(--surface-soft);color:var(--text-color);resize:none"></textarea>
-    <div style="display:flex;gap:.5rem;margin-top:.75rem;flex-wrap:wrap">
-      <button class="btn btn-ok" onclick="copiarComprovante()">📋 Copiar</button>
-      <button class="btn" onclick="abrirWhatsapp()">💬 WhatsApp</button>
-      <button class="btn btn-sec" onclick="document.getElementById('modal-comprovante').style.display='none'">Fechar</button>
-    </div>
-  </div>
-</div>
+{% include '_modal_comprovante.html' %}
 
 <script>
 // ── Autocomplete de endereço na busca de pedidos ──────────────
@@ -218,7 +182,7 @@ function abrirWhatsapp(){
       var re = new RegExp('(' + t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
       label = label.replace(re, '<strong>$1</strong>');
     });
-    li.innerHTML = '<span class="dd-icon">📍</span>' + label;
+    li.innerHTML = label;
     li.addEventListener('mousedown', function(e) {
       e.preventDefault();
       input.value = item.label;

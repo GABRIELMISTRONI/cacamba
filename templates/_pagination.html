@@ -1,0 +1,15 @@
+{% if pages > 1 %}
+<nav class="pagination-bar" aria-label="Paginação">
+  {% if page > 1 %}
+  <a class="btn btn-sec btn-sm" href="{{ url_for(pagination_endpoint, page=page-1, **pagination_args) }}">Anterior</a>
+  {% else %}
+  <span class="btn btn-sec btn-sm disabled" aria-disabled="true">Anterior</span>
+  {% endif %}
+  <span class="pagination-info">Página {{ page }} de {{ pages }}{% if total_rows is defined %} · {{ total_rows }} registro(s){% elif total is defined %} · {{ total }} registro(s){% endif %}</span>
+  {% if page < pages %}
+  <a class="btn btn-sec btn-sm" href="{{ url_for(pagination_endpoint, page=page+1, **pagination_args) }}">Próxima</a>
+  {% else %}
+  <span class="btn btn-sec btn-sm disabled" aria-disabled="true">Próxima</span>
+  {% endif %}
+</nav>
+{% endif %}

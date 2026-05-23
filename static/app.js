@@ -47,6 +47,16 @@
     document.getElementById('modal').style.display = 'none';
   };
 
+  // ESC fecha modais
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var modal = document.getElementById('modal');
+      if (modal && modal.style.display !== 'none') { closeModal(); return; }
+      var comprovanteModal = document.getElementById('modal-comprovante');
+      if (comprovanteModal && comprovanteModal.classList.contains('open')) { fecharModalComprovante(); return; }
+    }
+  });
+
   // ── Loading Overlay ──────────────────────────────
   window.showLoading = function() {
     var existing = document.getElementById('loading-overlay');
@@ -194,8 +204,8 @@
     });
   });
 
-  // Form submission loading state
-  document.querySelectorAll('form').forEach(function (form) {
+  // Form submission loading state (somente forms marcados)
+  document.querySelectorAll('form[data-loading]').forEach(function (form) {
     form.addEventListener('submit', function () {
       form.querySelectorAll('[data-mask]').forEach(applyMask);
       showLoading();
@@ -207,6 +217,30 @@
     });
   });
 
+  // Atalhos de teclado
+  document.addEventListener('keydown', function (e) {
+    if (e.target.matches('input, textarea, select, [contenteditable="true"]')) return;
+    if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      var search = document.querySelector('input[type="search"], .busca-inline, #busca-live, .busca-input');
+      if (search) {
+        e.preventDefault();
+        search.focus();
+        search.select && search.select();
+      }
+    }
+    if (e.key === 'n' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      var novo = document.querySelector('a[href*="pedidos/novo"], a[href*="pedido_novo"]');
+      if (novo) {
+        e.preventDefault();
+        window.location.href = novo.getAttribute('href');
+      }
+    }
+    if (e.key === 'Escape') {
+      if (typeof fecharModalComprovante === 'function') fecharModalComprovante();
+      if (typeof closeModal === 'function') closeModal();
+    }
+  });
+
   // Confirm dialogs
   document.querySelectorAll('[data-confirm]').forEach(function (el) {
     el.addEventListener('click', function (e) {
@@ -216,8 +250,11 @@
     });
   });
 
-  // Dynamic address loading for new order
+  // Dynamic address loading (pedido novo sem Select2)
   var clienteSelect = document.getElementById('cliente_id');
+  if (clienteSelect && clienteSelect.classList.contains('select2-hidden-accessible')) {
+    clienteSelect = null;
+  }
   var enderecoSelect = document.getElementById('endereco_id');
   var previewDiv = document.getElementById('preview-endereco');
   var formNovoDiv = document.getElementById('form-novo-endereco');
@@ -236,7 +273,7 @@
     fillObraAddress(addr);
     previewDiv.innerHTML = 
       '<div class="end-preview-box">' +
-        (addr.apelido ? '<strong class="end-apelido">📍 ' + esc(addr.apelido) + '</strong>' : '') +
+        (addr.apelido ? '<strong class="end-apelido">' + esc(addr.apelido) + '</strong>' : '') +
         '<div>' + esc(addr.rua) +
         (addr.quadra ? ', Q.' + esc(addr.quadra) : '') +
         (addr.numero ? ', nº ' + esc(addr.numero) : '') +
@@ -338,28 +375,23 @@
     });
   }
 
-  // Load available dumpsters via API
   document.querySelectorAll('.select-cacamba').forEach(function(sel) {
     var cap = sel.dataset.cap;
     if (!cap) return;
-    
-    showLoading();
-    fetch('/api/cacambas-disponiveis?capacidade=' + cap)
+    fetch('/api/cacambas-disponiveis?capacidade=' + encodeURIComponent(cap))
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        hideLoading();
         if (data.length) {
-          sel.innerHTML = '<option value="">Escolha</option>' + 
-            data.map(function(c) { 
-              return '<option value="' + c.id + '">Nº ' + c.codigo + ' (' + c.capacidade_m3 + 'm³)</option>'; 
+          sel.innerHTML = '<option value="">Escolha</option>' +
+            data.map(function(c) {
+              return '<option value="' + c.id + '">Nº ' + c.codigo + ' (' + c.capacidade_m3 + ' m³)</option>';
             }).join('');
         } else {
-          sel.innerHTML = '<option value="">Sem disponível (' + cap + 'm³)</option>';
+          sel.innerHTML = '<option value="">Sem disponível (' + cap + ' m³)</option>';
         }
       })
-      .catch(function() { 
-        hideLoading();
-        sel.innerHTML = '<option value="">Erro ao carregar</option>'; 
+      .catch(function() {
+        sel.innerHTML = '<option value="">Erro ao carregar</option>';
       });
   });
 
@@ -390,23 +422,59 @@
     });
   });
 
-  // Auto-hide flash messages
-  setTimeout(function() {
-    document.querySelectorAll('.flash').forEach(function(flash) {
-      flash.style.transition = 'opacity 0.5s ease';
-      flash.style.opacity = '0';
-      setTimeout(function() { flash.remove(); }, 500);
-    });
-  }, 5000);
-
 })();
 
-// Badge + barra de progresso de dias no local
+function parseIsoDate(value) {
+  if (!value) return null;
+  var d = String(value).trim().slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return new Date(d + 'T12:00:00');
+  return null;
+}
+
+window._comprovanteWaFone = '';
+window.gerarComprovante = function(pid) {
+  fetch('/pedidos/' + pid + '/comprovante')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      document.getElementById('comprovante-texto').value = d.texto;
+      window._comprovanteWaFone = (d.telefone || '').replace(/\D/g, '');
+      document.getElementById('modal-comprovante').classList.add('open');
+    })
+    .catch(function() { alert('Erro ao gerar comprovante.'); });
+};
+window.fecharModalComprovante = function() {
+  var m = document.getElementById('modal-comprovante');
+  if (m) m.classList.remove('open');
+};
+window.copiarComprovante = function() {
+  var ta = document.getElementById('comprovante-texto');
+  if (!ta) return;
+  var text = ta.value;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() { alert('Texto copiado.'); });
+    return;
+  }
+  ta.select();
+  document.execCommand('copy');
+  alert('Texto copiado.');
+};
+window.abrirWhatsappComprovante = function() {
+  var texto = encodeURIComponent(document.getElementById('comprovante-texto').value);
+  var fone = window._comprovanteWaFone ? '55' + window._comprovanteWaFone : '';
+  window.open(fone ? 'https://wa.me/' + fone + '?text=' + texto : 'https://wa.me/?text=' + texto, '_blank');
+};
+
+document.querySelectorAll('#modal-comprovante').forEach(function(modal) {
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) fecharModalComprovante();
+  });
+});
+
 document.querySelectorAll('.dias-no-local-badge').forEach(function(el){
-  var inicio = el.dataset.inicio;
-  var prazo  = parseInt(el.dataset.prazo || '7');
-  if (!inicio) return;
-  var dias = Math.floor((new Date() - new Date(inicio)) / 86400000);
+  var inicioDt = parseIsoDate(el.dataset.inicio);
+  var prazo  = parseInt(el.dataset.prazo || document.body.dataset.diasLocacao || '7', 10);
+  if (!inicioDt) return;
+  var dias = Math.floor((Date.now() - inicioDt.getTime()) / 86400000);
   var pct  = Math.min(100, Math.round(dias / prazo * 100));
   var cls  = dias >= prazo ? 'dias-vencido' : dias >= prazo-1 ? 'dias-alerta' : dias >= prazo-3 ? 'dias-aviso' : 'dias-ok';
   var barCls = cls.replace('dias-','');
@@ -437,6 +505,6 @@ document.querySelectorAll('.ops-item-sub').forEach(function(el) {
   a.target = '_blank';
   a.rel = 'noopener';
   a.className = 'end-link';
-  a.textContent = ' 🗺 Ver no mapa';
+  a.textContent = ' Ver no mapa';
   el.appendChild(a);
 });

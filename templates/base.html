@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Cacambas{% endblock %} - Bauru/SP</title>
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/icone-cacamba.png') }}">
+  <title>{% block title %}Caçambas{% endblock %} — Bauru/SP</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/icone-cacamba.svg') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
   {% block head_extra %}{% endblock %}
 </head>
-<body class="{% block body_class %}{% endblock %}" data-pre-cliente-id="{{ pre_cliente_id or '' }}">
+<body class="{% block body_class %}{% endblock %}" data-pre-cliente-id="{{ pre_cliente_id or '' }}" data-dias-locacao="{{ dias_locacao }}">
   <svg class="svg-sprite" aria-hidden="true" focusable="false">
     <symbol id="i-dashboard" viewBox="0 0 24 24"><path d="M4 13h7V4H4v9Zm9 7h7V4h-7v16ZM4 20h7v-5H4v5Z"/></symbol>
     <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 11a4 4 0 1 0-3.2-6.4A5 5 0 0 1 14 8c0 1.1-.35 2.12-.95 2.95.8.15 1.75.05 2.95.05Zm-8 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-3.35 0-6 1.68-6 3.75V20h12v-2.25C14 15.68 11.35 14 8 14Zm8-.8c-.8 0-1.56.08-2.25.23 1.44.86 2.25 2 2.25 3.32V20h6v-2.25c0-2.07-2.65-3.75-6-3.75Z"/></symbol>
@@ -30,7 +30,7 @@
 
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
-      <img src="{{ url_for('static', filename='images/icone-cacamba.png') }}" width="40" height="40" alt="Logo">
+      <img src="{{ url_for('static', filename='images/icone-cacamba.svg') }}" width="40" height="40" alt="">
       <div>
         <span class="brand-name">{{ empresa_nome or 'Cacambas' }}</span>
         <span class="brand-sub">{{ empresa_fone or 'Bauru - SP' }}</span>
@@ -43,12 +43,12 @@
         <span class="nav-icon"><svg><use href="#i-dashboard"></use></svg></span><span class="nav-label">Dashboard</span>
       </a>
 
-      <span class="nav-section">Gestao</span>
+      <span class="nav-section">Gestão</span>
       <a href="{{ url_for('clientes') }}" class="nav-item {% if request.endpoint in ['clientes','cliente_novo','cliente_detalhe','cliente_editar'] %}active{% endif %}">
         <span class="nav-icon"><svg><use href="#i-users"></use></svg></span><span class="nav-label">Clientes</span>
       </a>
       <a href="{{ url_for('cacambas') }}" class="nav-item {% if request.endpoint in ['cacambas','cacamba_nova'] %}active{% endif %}">
-        <span class="nav-icon"><svg><use href="#i-container"></use></svg></span><span class="nav-label">Cacambas</span>
+        <span class="nav-icon"><svg><use href="#i-container"></use></svg></span><span class="nav-label">Caçambas</span>
       </a>
       <a href="{{ url_for('pedidos') }}" class="nav-item {% if request.endpoint in ['pedidos','pedido_novo'] %}active{% endif %}">
         <span class="nav-icon"><svg><use href="#i-orders"></use></svg></span><span class="nav-label">Pedidos</span>
@@ -57,7 +57,7 @@
 
       <span class="nav-section">Operacional</span>
       <a href="{{ url_for('operacoes') }}" class="nav-item {% if request.endpoint == 'operacoes' %}active{% endif %}">
-        <span class="nav-icon"><svg><use href="#i-truck"></use></svg></span><span class="nav-label">Operacoes</span>
+        <span class="nav-icon"><svg><use href="#i-truck"></use></svg></span><span class="nav-label">Operações</span>
         {% if stats_sidebar and stats_sidebar.vencidas > 0 %}<span class="nav-badge danger" data-tip="Cacambas atrasadas">{{ stats_sidebar.vencidas }}</span>{% elif stats_sidebar and stats_sidebar.confirmar > 0 %}<span class="nav-badge">{{ stats_sidebar.confirmar }}</span>{% endif %}
       </a>
       <a href="{{ url_for('financeiro') }}" class="nav-item {% if request.endpoint == 'financeiro' %}active{% endif %}">
@@ -69,7 +69,7 @@
 
       <span class="nav-section">Sistema</span>
       <a href="{{ url_for('configuracoes') }}" class="nav-item {% if request.endpoint == 'configuracoes' %}active{% endif %}">
-        <span class="nav-icon"><svg><use href="#i-settings"></use></svg></span><span class="nav-label">Configuracoes</span>
+        <span class="nav-icon"><svg><use href="#i-settings"></use></svg></span><span class="nav-label">Configurações</span>
       </a>
     </nav>
 
@@ -80,9 +80,11 @@
         <a class="contact-phone" href="tel:{{ empresa_fone|replace(' ','')|replace('(','')|replace(')','')|replace('-','') }}">{{ empresa_fone }}</a>
       </div>
       {% endif %}
-      <a href="{{ url_for('reset_banco') }}" class="nav-item nav-item-danger" onclick="return confirm('Resetar TODOS os dados?')">
+      {% if enable_reset %}
+      <a href="{{ url_for('reset_banco') }}" class="nav-item nav-item-danger">
         <span class="nav-icon"><svg><use href="#i-reset"></use></svg></span><span class="nav-label">Reset banco</span>
       </a>
+      {% endif %}
     </div>
   </aside>
 
@@ -94,9 +96,21 @@
       <span class="topbar-title">{% block topbar_title %}{% block title2 %}{% endblock %}{% endblock %}</span>
       <div class="topbar-actions">
         {% block topbar_actions %}{% endblock %}
+        <div class="topbar-search-wrap" title="Ir para pedido pelo número (ex: #42)">
+          <span class="topbar-search-prefix">#</span>
+          <input type="number" id="topbar-pedido-id" class="topbar-pedido-input" 
+                 placeholder="Pedido…" min="1" autocomplete="off"
+                 aria-label="Ir para pedido pelo número">
+        </div>
+        {% if auth_enabled %}
+        <form method="post" action="{{ url_for('logout') }}" class="inline-form" style="margin:0">
+          <button type="submit" class="btn btn-sm btn-sec">Sair</button>
+        </form>
+        {% endif %}
         <button class="btn btn-sm theme-toggle" id="theme-toggle" aria-label="Alternar tema" title="Alternar tema">
           <span id="theme-icon" class="theme-icon"><svg><use href="#i-moon"></use></svg></span>
         </button>
+        <button class="btn btn-sm btn-sec" id="btn-atalhos" title="Atalhos de teclado" aria-label="Atalhos" onclick="toggleAtalhos()" style="font-size:.8rem;padding:.25rem .55rem">⌨</button>
       </div>
     </header>
 
@@ -128,6 +142,26 @@
         </div>
       </div>
     </div>
+
+    <!-- Painel de atalhos de teclado -->
+    <div id="painel-atalhos" class="painel-atalhos" style="display:none;" role="dialog" aria-label="Atalhos de teclado">
+      <div class="painel-atalhos-inner">
+        <div class="painel-atalhos-head">
+          <strong>Atalhos de teclado</strong>
+          <button onclick="fecharAtalhos()" class="modal-close" aria-label="Fechar">&times;</button>
+        </div>
+        <ul class="atalhos-lista">
+          <li><kbd>/</kbd> <span>Focar na busca</span></li>
+          <li><kbd>n</kbd> <span>Novo pedido</span></li>
+          <li><kbd>Esc</kbd> <span>Fechar modal / painel</span></li>
+          <li><kbd>d</kbd> <span>Ir ao Dashboard</span></li>
+          <li><kbd>c</kbd> <span>Ir a Clientes</span></li>
+          <li><kbd>o</kbd> <span>Ir a Operações</span></li>
+          <li><kbd>f</kbd> <span>Ir a Financeiro</span></li>
+          <li><kbd>?</kbd> <span>Mostrar atalhos</span></li>
+        </ul>
+      </div>
+    </div>
   </div>
 
   <script src="{{ url_for('static', filename='app.js') }}"></script>
@@ -141,8 +175,48 @@
     document.getElementById('sidebarOverlay').classList.remove('visible');
   }
 
+  // Busca rápida de pedido pelo número no topbar
+  var topbarPedidoInput = document.getElementById('topbar-pedido-id');
+  if (topbarPedidoInput) {
+    topbarPedidoInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        var val = this.value.trim().replace('#','');
+        if (val && !isNaN(val)) {
+          window.location.href = '/pedidos/' + val;
+        }
+      }
+      e.stopPropagation();
+    });
+    // Clique no # também foca o campo
+    var prefix = topbarPedidoInput.previousElementSibling;
+    if (prefix) prefix.addEventListener('click', function() { topbarPedidoInput.focus(); });
+  }
+
   window.addEventListener('scroll', function() {
     document.querySelector('.topbar').classList.toggle('scrolled', window.scrollY > 10);
+  });
+
+  window.toggleAtalhos = function() {
+    var p = document.getElementById('painel-atalhos');
+    p.style.display = p.style.display === 'none' ? 'flex' : 'none';
+  };
+  window.fecharAtalhos = function() {
+    document.getElementById('painel-atalhos').style.display = 'none';
+  };
+
+  document.addEventListener('keydown', function(e) {
+    if (e.target.matches('input, textarea, select, [contenteditable="true"]')) return;
+    if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+      e.preventDefault();
+      toggleAtalhos();
+    }
+    if (e.key === 'Escape') {
+      fecharAtalhos();
+    }
+    if (e.key === 'd' && !e.ctrlKey && !e.metaKey) { window.location.href = '/'; }
+    if (e.key === 'c' && !e.ctrlKey && !e.metaKey) { window.location.href = '/clientes'; }
+    if (e.key === 'o' && !e.ctrlKey && !e.metaKey) { window.location.href = '/operacoes'; }
+    if (e.key === 'f' && !e.ctrlKey && !e.metaKey) { window.location.href = '/financeiro'; }
   });
 
   document.querySelectorAll('.flash').forEach(function(el) {
