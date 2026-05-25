@@ -14,7 +14,64 @@
       <a class="btn btn-hero-sec" href="{{ url_for('mapa') }}"><svg class="erp-icon"><use href="#i-map"></use></svg> Ver mapa</a>
     </div>
   </div>
-  <div class="hero-visual" aria-hidden="true"></div>
+  <div class="hero-visual" aria-hidden="true">
+    <svg viewBox="0 0 260 180" xmlns="http://www.w3.org/2000/svg" class="hero-ilustracao">
+      <!-- Chão -->
+      <ellipse cx="130" cy="170" rx="115" ry="8" fill="rgba(0,0,0,0.18)"/>
+      <!-- Caminhão - cabine -->
+      <rect x="12" y="90" width="62" height="68" rx="6" fill="#2d3748"/>
+      <!-- Para-brisa cabine -->
+      <rect x="18" y="96" width="48" height="32" rx="4" fill="#90cdf4" opacity="0.85"/>
+      <!-- Detalhe grade frontal -->
+      <rect x="12" y="140" width="62" height="10" rx="3" fill="#e06820"/>
+      <!-- Para-lamas + farol -->
+      <rect x="8" y="145" width="12" height="8" rx="3" fill="#fbd38d"/>
+      <rect x="10" y="147" width="6" height="4" rx="1" fill="#fefce8"/>
+      <!-- Carroceria / caçamba no caminhão -->
+      <path d="M72 78 L76 148 L210 148 L214 78 Z" fill="#c4531a"/>
+      <!-- Bordas laterais da caçamba -->
+      <rect x="72" y="72" width="142" height="10" rx="3" fill="#e07a3a"/>
+      <!-- Divisórias internas da caçamba -->
+      <line x1="112" y1="82" x2="108" y2="148" stroke="rgba(0,0,0,0.2)" stroke-width="2"/>
+      <line x1="152" y1="82" x2="152" y2="148" stroke="rgba(0,0,0,0.2)" stroke-width="2"/>
+      <line x1="192" y1="82" x2="196" y2="148" stroke="rgba(0,0,0,0.2)" stroke-width="2"/>
+      <!-- Listras de segurança na caçamba -->
+      <rect x="72" y="128" width="142" height="12" rx="0" fill="rgba(255,200,0,0.25)"/>
+      <rect x="72" y="130" width="16" height="8" fill="rgba(255,200,0,0.5)"/>
+      <rect x="100" y="130" width="16" height="8" fill="rgba(255,200,0,0.5)"/>
+      <rect x="128" y="130" width="16" height="8" fill="rgba(255,200,0,0.5)"/>
+      <rect x="156" y="130" width="16" height="8" fill="rgba(255,200,0,0.5)"/>
+      <rect x="184" y="130" width="16" height="8" fill="rgba(255,200,0,0.5)"/>
+      <!-- Entulho/conteúdo na caçamba -->
+      <path d="M80 82 Q90 72 105 78 Q120 68 140 75 Q158 65 175 73 Q192 68 205 76 L207 84 L80 84 Z" fill="#8B7355" opacity="0.7"/>
+      <path d="M82 84 Q100 79 118 83 Q135 77 155 82 Q172 78 192 82 L205 82 L205 86 L82 86 Z" fill="#a08060" opacity="0.6"/>
+      <!-- Rodas -->
+      <circle cx="38" cy="155" r="16" fill="#1a202c"/>
+      <circle cx="38" cy="155" r="10" fill="#2d3748"/>
+      <circle cx="38" cy="155" r="5" fill="#4a5568"/>
+      <circle cx="100" cy="155" r="16" fill="#1a202c"/>
+      <circle cx="100" cy="155" r="10" fill="#2d3748"/>
+      <circle cx="100" cy="155" r="5" fill="#4a5568"/>
+      <circle cx="182" cy="155" r="16" fill="#1a202c"/>
+      <circle cx="182" cy="155" r="10" fill="#2d3748"/>
+      <circle cx="182" cy="155" r="5" fill="#4a5568"/>
+      <!-- Reflexo no vidro -->
+      <path d="M22 99 L40 99 L38 118 L20 118 Z" fill="rgba(255,255,255,0.15)"/>
+      <!-- Espelho lateral -->
+      <rect x="6" y="108" width="8" height="6" rx="2" fill="#4a5568"/>
+      <!-- Pequenas estrelas / partículas decorativas -->
+      <circle cx="230" cy="40" r="2" fill="rgba(255,255,255,0.5)"/>
+      <circle cx="245" cy="65" r="1.5" fill="rgba(255,255,255,0.4)"/>
+      <circle cx="218" cy="25" r="1" fill="rgba(255,255,255,0.3)"/>
+      <circle cx="250" cy="100" r="1.5" fill="rgba(255,255,255,0.35)"/>
+      <circle cx="238" cy="120" r="1" fill="rgba(255,255,255,0.3)"/>
+      <!-- Caçamba solta no canto -->
+      <path d="M215 110 L218 145 L255 145 L258 110 Z" fill="rgba(255,255,255,0.18)"/>
+      <rect x="213" y="105" width="47" height="8" rx="2" fill="rgba(255,255,255,0.25)"/>
+      <line x1="230" y1="113" x2="228" y2="145" stroke="rgba(255,255,255,0.12)" stroke-width="1.5"/>
+      <line x1="244" y1="113" x2="246" y2="145" stroke="rgba(255,255,255,0.12)" stroke-width="1.5"/>
+    </svg>
+  </div>
 </div>
 
 {% if stats.retiradas_vencidas or vencendo_amanha %}
@@ -34,18 +91,22 @@
 
 <div class="stats-grid">
   <div class="stat-card verde">
+    <div class="stat-icon-deco"><svg><use href="#i-container"></use></svg></div>
     <div class="stat-num">{{ stats.disponiveis }}</div>
     <div class="stat-label">Caçambas disponíveis</div>
   </div>
   <div class="stat-card laranja">
+    <div class="stat-icon-deco"><svg><use href="#i-truck"></use></svg></div>
     <div class="stat-num">{{ stats.em_uso }}</div>
     <div class="stat-label">Caçambas em uso</div>
   </div>
   <div class="stat-card azul">
+    <div class="stat-icon-deco"><svg><use href="#i-orders"></use></svg></div>
     <div class="stat-num">{{ stats.pedidos_abertos }}</div>
     <div class="stat-label">Pedidos em aberto</div>
   </div>
   <div class="stat-card">
+    <div class="stat-icon-deco"><svg><use href="#i-users"></use></svg></div>
     <div class="stat-num">{{ stats.clientes }}</div>
     <div class="stat-label">Clientes cadastrados</div>
   </div>
@@ -74,18 +135,22 @@
 
 <div class="stats-grid stats-grid-finance">
   <a href="{{ url_for('financeiro', f='pendente') }}" class="stat-card vermelho stat-card-link">
+    <div class="stat-icon-deco"><svg><use href="#i-alert"></use></svg></div>
     <div class="stat-num stat-num-sm">{{ stats.valor_a_receber | brl }}</div>
     <div class="stat-label">A receber · {{ stats.a_receber }} pedido(s)</div>
   </a>
   <a href="{{ url_for('operacoes', f='entregar') }}" class="stat-card azul stat-card-link">
+    <div class="stat-icon-deco"><svg><use href="#i-truck"></use></svg></div>
     <div class="stat-num">{{ stats.entregas_hoje }}</div>
     <div class="stat-label">Aguardando entrega</div>
   </a>
   <a href="{{ url_for('pedidos', s='pendente') }}" class="stat-card stat-card-link">
+    <div class="stat-icon-deco"><svg><use href="#i-orders"></use></svg></div>
     <div class="stat-num">{{ stats.pendentes }}</div>
     <div class="stat-label">Solicitações pendentes</div>
   </a>
   <a href="{{ url_for('financeiro', f='pago') }}" class="stat-card verde stat-card-link">
+    <div class="stat-icon-deco"><svg><use href="#i-money"></use></svg></div>
     <div class="stat-num stat-num-sm">{{ stats.valor_recebido_mes | brl }}</div>
     <div class="stat-label">Valor já recebido</div>
   </a>

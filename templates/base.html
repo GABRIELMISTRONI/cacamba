@@ -7,23 +7,109 @@
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/icone-cacamba.svg') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
   {% block head_extra %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}" data-pre-cliente-id="{{ pre_cliente_id or '' }}" data-dias-locacao="{{ dias_locacao }}">
-  <svg class="svg-sprite" aria-hidden="true" focusable="false">
-    <symbol id="i-dashboard" viewBox="0 0 24 24"><path d="M4 13h7V4H4v9Zm9 7h7V4h-7v16ZM4 20h7v-5H4v5Z"/></symbol>
-    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 11a4 4 0 1 0-3.2-6.4A5 5 0 0 1 14 8c0 1.1-.35 2.12-.95 2.95.8.15 1.75.05 2.95.05Zm-8 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-3.35 0-6 1.68-6 3.75V20h12v-2.25C14 15.68 11.35 14 8 14Zm8-.8c-.8 0-1.56.08-2.25.23 1.44.86 2.25 2 2.25 3.32V20h6v-2.25c0-2.07-2.65-3.75-6-3.75Z"/></symbol>
-    <symbol id="i-container" viewBox="0 0 24 24"><path d="M3 8.5 5 5h14l2 3.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8.5Zm3.2-1.5-.85 1.5h13.3L17.8 7H6.2ZM7 11v7h2v-7H7Zm4 0v7h2v-7h-2Zm4 0v7h2v-7h-2Z"/></symbol>
-    <symbol id="i-orders" viewBox="0 0 24 24"><path d="M7 3h10a2 2 0 0 1 2 2v16l-3-1.5-3 1.5-3-1.5L7 21l-2-1V5a2 2 0 0 1 2-2Zm2 5h6V6H9v2Zm0 4h6v-2H9v2Zm0 4h4v-2H9v2Z"/></symbol>
-    <symbol id="i-truck" viewBox="0 0 24 24"><path d="M3 6h11v9h1.2l2-4H21v4h1v3h-2.1a3 3 0 0 1-5.8 0H9.9a3 3 0 0 1-5.8 0H3V6Zm14.4 7-1 2H19v-2h-1.6ZM7 19a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm10 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"/></symbol>
-    <symbol id="i-money" viewBox="0 0 24 24"><path d="M3 6h18v12H3V6Zm3 3a2 2 0 0 1-2 2v2a2 2 0 0 1 2 2h12a2 2 0 0 1 2-2v-2a2 2 0 0 1-2-2H6Zm6 6a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z"/></symbol>
-    <symbol id="i-map" viewBox="0 0 24 24"><path d="m9 18-6 3V6l6-3 6 3 6-3v15l-6 3-6-3Zm1-12.5v10.8l4 2V7.5l-4-2ZM5 7.2v10.6l3-1.5V5.7L5 7.2Zm11 .5v10.6l3-1.5V6.2l-3 1.5Z"/></symbol>
-    <symbol id="i-settings" viewBox="0 0 24 24"><path d="m19.4 13.5 1.6 1.2-2 3.5-1.9-.8a7.6 7.6 0 0 1-1.6.9L15.2 20h-4l-.3-1.7a7.6 7.6 0 0 1-1.6-.9l-1.9.8-2-3.5 1.6-1.2a6.7 6.7 0 0 1 0-1.9l-1.6-1.2 2-3.5 1.9.8c.5-.36 1.05-.66 1.6-.9l.3-1.8h4l.3 1.8c.55.24 1.1.54 1.6.9l1.9-.8 2 3.5-1.6 1.2c.1.65.1 1.25 0 1.9ZM13.2 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></symbol>
-    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M12 5a7 7 0 1 1-6.3 10H3.55A9 9 0 1 0 6 5.7V3H4v6h6V7H7.25A6.98 6.98 0 0 1 12 5Z"/></symbol>
-    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 15.2A8.5 8.5 0 0 1 8.8 3.5 9 9 0 1 0 20.5 15.2Z"/></symbol>
-    <symbol id="i-sun" viewBox="0 0 24 24"><path d="M11 2h2v3h-2V2Zm0 17h2v3h-2v-3ZM4.22 5.64l1.42-1.42 2.12 2.12-1.42 1.42-2.12-2.12Zm12.02 12.02 1.42-1.42 2.12 2.12-1.42 1.42-2.12-2.12ZM2 11h3v2H2v-2Zm17 0h3v2h-3v-2ZM4.22 18.36l2.12-2.12 1.42 1.42-2.12 2.12-1.42-1.42ZM16.24 6.34l2.12-2.12 1.42 1.42-2.12 2.12-1.42-1.42ZM12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z"/></symbol>
+  <svg class="svg-sprite" aria-hidden="true" focusable="false" style="display:none">
+    <!-- Dashboard: grid 2x2 com bordas arredondadas elegantes -->
+    <symbol id="i-dashboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="7" height="9" rx="2"/>
+      <rect x="14" y="3" width="7" height="5" rx="2"/>
+      <rect x="3" y="16" width="7" height="5" rx="2"/>
+      <rect x="14" y="12" width="7" height="9" rx="2"/>
+    </symbol>
+    <!-- Usuários: dois círculos estilizados -->
+    <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="8.5" cy="7" r="3.5"/>
+      <path d="M1.5 20c0-3.5 3.1-6.5 7-6.5s7 3 7 6.5"/>
+      <circle cx="18" cy="8" r="2.5" stroke-width="1.6"/>
+      <path d="M21.5 20c0-2.5-1.7-4.5-4-5.5" stroke-width="1.6"/>
+    </symbol>
+    <!-- Caçamba: container realista com perspectiva -->
+    <symbol id="i-container" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 8h18l-2.5 12H5.5L3 8Z"/>
+      <path d="M1.5 5.5h21l-1.5 2.5h-18L1.5 5.5Z"/>
+      <path d="M7.5 8L7 20M16.5 8L17 20" stroke-width="1.3" opacity=".55"/>
+    </symbol>
+    <!-- Pedidos: prancheta moderna -->
+    <symbol id="i-orders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="3" width="14" height="18" rx="2.5"/>
+      <path d="M9 8h6M9 12h6M9 16h4"/>
+      <rect x="9" y="1" width="6" height="3.5" rx="1.5" stroke-width="1.6"/>
+    </symbol>
+    <!-- Caminhão: lateral com caçamba -->
+    <symbol id="i-truck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="1" y="7" width="13" height="11" rx="1.5"/>
+      <path d="M14 11h4.5l3 4.5V18h-7.5V11Z"/>
+      <circle cx="5.5" cy="19" r="1.8"/>
+      <circle cx="17.5" cy="19" r="1.8"/>
+      <path d="M5 7V11M9 7V11" stroke-width="1.3" opacity=".45"/>
+    </symbol>
+    <!-- Financeiro: cifrão em círculo -->
+    <symbol id="i-money" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9.5"/>
+      <path d="M12 7v1M12 16v1"/>
+      <path d="M9.5 10c0-.8 1.1-1.5 2.5-1.5s2.5.7 2.5 1.8c0 2-5 1.5-5 3.7 0 1.3 1.1 2 2.5 2s2.5-.7 2.5-1.5"/>
+    </symbol>
+    <!-- Mapa: pin moderno -->
+    <symbol id="i-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2C8.1 2 5 5.2 5 9.2c0 5.4 7 12.8 7 12.8s7-7.4 7-12.8C19 5.2 15.9 2 12 2Z"/>
+      <circle cx="12" cy="9" r="2.5" fill="currentColor" stroke="none"/>
+    </symbol>
+    <!-- Configurações: engrenagem clean -->
+    <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3.2"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
+    </symbol>
+    <!-- Reset: seta circular -->
+    <symbol id="i-reset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+      <path d="M3 3v5h5"/>
+    </symbol>
+    <!-- Lua -->
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>
+    </symbol>
+    <!-- Sol -->
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+    </symbol>
+    <!-- Editar: lápis -->
+    <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+      <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/>
+    </symbol>
+    <!-- Adicionar: plus em círculo -->
+    <symbol id="i-add" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9.5"/>
+      <path d="M12 8v8M8 12h8"/>
+    </symbol>
+    <!-- Seta para trás -->
+    <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </symbol>
+    <!-- Filtro -->
+    <symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+    </symbol>
+    <!-- Check -->
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </symbol>
+    <!-- X / Fechar -->
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"/>
+      <line x1="6" y1="6" x2="18" y2="18"/>
+    </symbol>
+    <!-- Alerta/Warning -->
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </symbol>
   </svg>
 
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
